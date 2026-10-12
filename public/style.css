@@ -1,0 +1,59 @@
+/* Stick e Seus Amigos — a página é só uma moldura escura para o jogo. */
+:root {
+  --bg: #0d0a10;
+  --btn: rgba(255, 255, 255, 0.14);
+  --btn-on: rgba(184, 255, 46, 0.45);
+  --btn-ink: #f4f4f4;
+  color-scheme: dark;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: inherit; }
+html, body { height: 100%; margin: 0; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #141018; } }
+:root[data-theme="dark"] { --bg: #0d0a10; }
+body {
+  background: var(--bg);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#game {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  outline: none;
+}
+
+/* ---------- controles de toque ---------- */
+#touch {
+  display: none;
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: 0 calc(14px + env(safe-area-inset-left, 0px)) 0 calc(14px + env(safe-area-inset-right, 0px));
+  justify-content: space-between;
+  pointer-events: none;
+}
+#touch .pad { display: flex; gap: 12px; pointer-events: auto; }
+#touch button {
+  width: 64px; height: 64px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 14px;
+  background: var(--btn);
+  color: var(--btn-ink);
+  font: 16px "Press Start 2P", monospace;
+  touch-action: none;
+}
+#touch button:active { background: var(--btn-on); }
+#touch button.jump { width: 76px; height: 76px; border-radius: 50%; }
+@media (pointer: coarse) { #touch { display: flex; } }
