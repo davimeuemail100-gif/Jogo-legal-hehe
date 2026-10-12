@@ -228,6 +228,17 @@ const CHICK = [
   '..O....O..',
 ];
 const SPRITES = {
+   sans: {
+  w: 10, h: 16,
+  frames: {
+    idle:   SANS,
+    wink:   (() => {
+      const f = SANS.slice();
+      f[3] = 'kwkwwwkwkk';
+      return f;
+    })(),
+  },
+},
   player: {
     w: 12, h: 16,
     frames: {
