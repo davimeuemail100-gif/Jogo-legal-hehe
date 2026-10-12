@@ -195,6 +195,25 @@ const ZOOM = [
   '.knnk..knNk.',
   '.kkkk..kkkk.',
 ];
+// ===== SANS (Undertale) =====
+const SANS = [
+  '..kkkkkk..',
+  '.kwwwwwwk.',
+  'kwwwwwwwwk',
+  'kwkwkkwkwk',
+  'kwwwwwwwwk',
+  'kwwkkkkwwk',
+  '.kwwwwwwk.',
+  '..kkkkkk..',
+  '.kwwwwwwk.',
+  'kwwwwwwwwk',
+  'kwwwwwwwwk',
+  'kwwwwwwwwk',
+  'kwwwwwwwwk',
+  '.kk....kk.',
+  '.kk....kk.',
+  '.kkk..kkk.',
+];
 
 const CHICK = [
   '...kkkk...',
@@ -208,7 +227,6 @@ const CHICK = [
   '..kkkkkk..',
   '..O....O..',
 ];
-
 const SPRITES = {
   player: {
     w: 12, h: 16,
