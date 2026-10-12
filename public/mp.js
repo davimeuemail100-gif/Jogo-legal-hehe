@@ -496,27 +496,63 @@ function friendsScreen(){
 function openFriendChat(friend){
   closeAll();
   const o=$('div',{id:'mpo'});
-  const chat=MP.friendChat[friend]||[];
   o.innerHTML=`<div class="c">
 <h1>Chat com ${friend}</h1>
-<div id="fcMsgs" style="background:#0d0a12;border-radius:8px;padding:8px;min-height:120px;max-height:240px;overflow-y:auto;font-size:11px"></div>
-<input id="fcTxt" placeholder="mensagem..." maxlength="200">
-<button id="fcSend">ENVIAR</button>
+<div id="fcMsgs" style="background:#0d0a12;border-radius:8px;padding:8px;min-height:180px;max-height:280px;overflow-y:auto;font-size:11px"></div>
+<div style="display:flex;gap:4px;margin-top:6px">
+<input id="fcTxt" placeholder="mensagem..." maxlength="200" style="flex:1;padding:8px;background:#0d0a12;color:#fff;border:1px solid #4a2a6a;border-radius:8px;font-family:inherit;font-size:12px;box-sizing:border-box">
+<button id="fcSend" style="padding:8px 14px;background:#8a2be2;color:#fff;border:none;border-radius:8px;font-family:inherit;font-weight:bold;cursor:pointer;width:auto;margin:0">ENVIAR</button>
+</div>
 <button id="fcBack" class="sec">voltar</button>
 </div>`;
   document.body.appendChild(o);
   const msgs=o.querySelector('#fcMsgs');
-  function renderChat(){
+  const inp=o.querySelector('#fcTxt');
+  let lastMsgCount = 0;
+
+  function renderMsgs(list){
     msgs.innerHTML='';
-    chat.forEach(m=>{
+    if(!list.length){
+      msgs.innerHTML='<p style="color:#666;text-align:center;padding:20px">nenhuma mensagem ainda. diga oi!</p>';
+      return;
+    }
+    list.forEach(m=>{
       const d=$('div');
-      d.style.margin='2px 0';
-      d.style.color=m.me?'#b8ff2e':'#8ad8ff';
-      d.textContent=(m.me?'Voce: ':'')+m.text;
+      d.style.margin='3px 0';
+      d.style.color = m.from === MP.nick ? '#b8ff2e' : '#8ad8ff';
+      d.textContent = (m.from === MP.nick ? 'Você: ' : m.from + ': ') + m.text;
       msgs.appendChild(d);
     });
     msgs.scrollTop=msgs.scrollHeight;
   }
+
+  async function carregar(){
+    if(!document.getElementById('fcMsgs'))return;
+    try{
+      const r=await fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'getFriendMsgs',nick:MP.nick,to:friend})}).then(x=>x.json());
+      if(r.ok && r.msgs.length !== lastMsgCount){
+        lastMsgCount = r.msgs.length;
+        renderMsgs(r.msgs);
+      }
+    }catch(e){}
+    if(document.getElementById('fcMsgs'))setTimeout(carregar,2000);
+  }
+  carregar();
+
+  const enviar=async()=>{
+    const t=inp.value.trim();
+    if(!t)return;
+    inp.value='';
+    await fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'sendFriendMsg',nick:MP.nick,to:friend,text:t})});
+    carregar();
+  };
+  o.querySelector('#fcSend').onclick=enviar;
+  inp.onkeydown=e=>{if(e.key==='Enter')enviar();};
+
+  o.querySelector('#fcBack').onclick=()=>{closeAll();friendsScreen();};
+}
   renderChat();
   o.querySelector('#fcSend').onclick=()=>{
     const t=o.querySelector('#fcTxt').value.trim();
