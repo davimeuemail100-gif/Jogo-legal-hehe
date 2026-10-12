@@ -2,19 +2,21 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>WRICK STUDIO</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,maximum-scale=1">
+<title>STUDIO</title>
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#1a1a24;
     font-family:-apple-system,"Segoe UI",Roboto,monospace;color:#eee;
-    user-select:none;-webkit-tap-highlight-color:transparent}
-  #c{display:block;width:100vw;height:100vh}
+    user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+    touch-action:none}
+  #c{display:block;width:100vw;height:100vh;touch-action:none}
   .bar{position:fixed;background:rgba(20,16,26,.96);border:2px solid #508cff;
     border-radius:10px;padding:6px;z-index:100;display:flex;gap:4px;
     box-shadow:0 4px 18px rgba(0,0,0,.5)}
-  #top{top:8px;left:50%;transform:translateX(-50%);flex-wrap:wrap;justify-content:center;max-width:96vw}
+  #top{top:8px;left:50%;transform:translateX(-50%);flex-wrap:wrap;justify-content:center;
+    max-width:96vw;gap:4px}
   #left{top:70px;left:8px;flex-direction:column}
-  #props{bottom:8px;right:8px;width:220px;font-size:11px;flex-direction:column}
+  #props{top:70px;right:8px;width:220px;font-size:11px;flex-direction:column;max-height:80vh;overflow-y:auto}
   .bar button{background:#2a2a3a;color:#fff;border:1px solid #3a3a4a;border-radius:6px;
     padding:7px 10px;font-family:inherit;font-size:11px;cursor:pointer;font-weight:bold;
     white-space:nowrap;transition:background .12s}
@@ -23,6 +25,10 @@
   .bar button.act{background:#508cff;color:#000}
   .bar button.del{background:#a02030}
   .bar button.del:hover{background:#c02040}
+  .bar button.pub{background:#4ac24a;color:#0a1a0a}
+  .bar button.pub:hover{background:#5ce05c}
+  .bar button.tb{background:#a050ff}
+  .bar button.tb:hover{background:#b070ff}
   .row{display:flex;gap:4px;align-items:center;margin:3px 0;font-size:11px}
   .row label{width:38px;color:#8a8a9a;text-align:right}
   .row input{flex:1;background:#0d0a12;color:#fff;border:1px solid #3a3a4a;
@@ -31,6 +37,36 @@
     border:2px solid #4ac24a;border-radius:8px;padding:6px 12px;font-size:11px;
     color:#4ac24a;z-index:100;display:none;font-weight:bold}
   .grid-btn{width:34px;height:34px;padding:0;font-size:15px}
+
+  /* modais */
+  .modal{position:fixed;inset:0;background:rgba(4,2,8,.9);z-index:2000;
+    display:none;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
+  .modal.open{display:flex}
+  .modal .box{background:#141018;border:2px solid #508cff;border-radius:14px;padding:16px;
+    width:min(94vw,420px);max-height:88vh;overflow-y:auto;box-shadow:0 0 30px rgba(80,140,255,.5)}
+  .modal h2{margin:0 0 10px;font-size:15px;color:#b8ff2e;text-align:center;letter-spacing:1px}
+  .modal label{display:block;font-size:11px;color:#8a8a9a;margin:8px 0 3px}
+  .modal input,.modal select,.modal textarea{width:100%;padding:8px;background:#0d0a12;color:#fff;
+    border:1px solid #3a3a4a;border-radius:6px;font-family:inherit;font-size:12px;box-sizing:border-box;resize:none}
+  .modal textarea{height:60px}
+  .modal button{width:100%;padding:9px;margin-top:8px;background:#508cff;color:#000;
+    border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer}
+  .modal button.sec{background:#333;color:#eee}
+  .modal .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .modal .err{color:#ff5570;font-size:11px;text-align:center;min-height:14px;margin-top:6px}
+  .tbitem{background:#0d0a12;border:1px solid #3a3a4a;border-radius:8px;padding:8px;margin:5px 0;
+    cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+  .tbitem:hover{background:#1a0f26;border-color:#a050ff}
+  .tbitem .info{flex:1;min-width:0}
+  .tbitem .nm{color:#b8ff2e;font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tbitem .desc{font-size:10px;color:#8a8a9a;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tbitem .meta{font-size:10px;color:#666;margin-top:3px}
+  .tbitem .type{background:#508cff;color:#000;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;align-self:flex-start}
+  .tbitem .type.char{background:#ff6a9c}
+  .tbhint{font-size:11px;color:#666;text-align:center;padding:20px}
+
+  /* cursor do gizmo no mobile */
+  canvas.gizmo-hover { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -41,13 +77,15 @@
   <button data-add="Sphere">⚪ Sphere</button>
   <button data-add="Cylinder">🛢 Cylinder</button>
   <button data-add="Wedge">🔺 Wedge</button>
-  <span style="width:8px"></span>
+  <span style="width:6px"></span>
   <button id="btnMove" class="act">✥ Mover</button>
   <button id="btnRot">⟳ Girar</button>
   <button id="btnScale">⤢ Escalar</button>
-  <span style="width:8px"></span>
+  <span style="width:6px"></span>
   <button id="btnSave">💾 Salvar</button>
   <button id="btnLoad">📂 Carregar</button>
+  <button id="btnPub" class="pub">📤 Publicar</button>
+  <button id="btnTB" class="tb">🗂 Toolbox</button>
   <button id="btnClear" class="del">🗑 Limpar</button>
 </div>
 
@@ -71,13 +109,45 @@
     <div class="row"><label>SY</label><input id="pSY" type="number" step="0.5" min="0.1"></div>
     <div class="row"><label>SZ</label><input id="pSZ" type="number" step="0.5" min="0.1"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px">
-      <button id="btnClone" style="grid-column:1/3">📋 Duplicar</button>
-      <button id="btnDel" class="del" style="grid-column:1/3">🗑 Deletar</button>
+      <button id="btnClone" style="grid-column:1/3;padding:7px;font-size:11px;border-radius:6px;background:#2a2a3a;color:#fff;border:1px solid #3a3a4a;font-family:inherit;font-weight:bold;cursor:pointer">📋 Duplicar</button>
+      <button id="btnDel" style="grid-column:1/3;padding:7px;font-size:11px;border-radius:6px;background:#a02030;color:#fff;border:none;font-family:inherit;font-weight:bold;cursor:pointer">🗑 Deletar</button>
     </div>
   </div>
 </div>
 
 <div id="saved">✔ salvo</div>
+
+<!-- MODAL PUBLICAR -->
+<div class="modal" id="pubModal">
+  <div class="box">
+    <h2>📤 PUBLICAR</h2>
+    <label>Nome</label>
+    <input id="pubName" maxlength="40" placeholder="Nome do seu modelo">
+    <label>Descrição</label>
+    <textarea id="pubDesc" maxlength="200" placeholder="Descreva o que é..."></textarea>
+    <label>Tipo</label>
+    <select id="pubType">
+      <option value="model">Modelo (peça/construção)</option>
+      <option value="character">Personagem</option>
+    </select>
+    <div class="err" id="pubErr"></div>
+    <button id="pubOk">PUBLICAR</button>
+    <button class="sec" id="pubCancel">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL TOOLBOX -->
+<div class="modal" id="tbModal">
+  <div class="box">
+    <h2>🗂 TOOLBOX</h2>
+    <div class="row2">
+      <button class="sec" id="tbModel">📦 Modelos</button>
+      <button class="sec" id="tbChar">🧍 Personagens</button>
+    </div>
+    <div id="tbList" style="margin-top:8px"></div>
+    <button class="sec" id="tbClose" style="margin-top:12px">Fechar</button>
+  </div>
+</div>
 
 <script type="importmap">
 {
@@ -91,8 +161,9 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
-// ============ CENA ============
+// ================= CENA =================
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -115,8 +186,18 @@ controls.dampingFactor = 0.08;
 controls.maxPolarAngle = Math.PI / 2.05;
 controls.minDistance = 3;
 controls.maxDistance = 120;
+// pan com 2 dedos (touch) — habilitado por padrão no touches.TWO
+controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.PAN };
+controls.enablePan = true;
+controls.panSpeed = 1.2;
+// mouse: botão direito faz pan, esquerdo rotaciona
+controls.mouseButtons = {
+  LEFT: THREE.MOUSE.ROTATE,
+  MIDDLE: THREE.MOUSE.DOLLY,
+  RIGHT: THREE.MOUSE.PAN
+};
 
-// ============ LUZES ============
+// ================= LUZES =================
 scene.add(new THREE.HemisphereLight(0xffffff, 0x222230, 0.9));
 const sun = new THREE.DirectionalLight(0xffffff, 1.3);
 sun.position.set(20, 30, 15);
@@ -128,7 +209,7 @@ sun.shadow.camera.top = 40;
 sun.shadow.camera.bottom = -40;
 scene.add(sun);
 
-// ============ CHÃO + GRID ============
+// ================= CHÃO + GRID =================
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(200, 200),
   new THREE.MeshStandardMaterial({ color: 0x2a2a36, roughness: 0.9 })
@@ -142,8 +223,26 @@ let grid = new THREE.GridHelper(100, 50, 0x508cff, 0x333340);
 grid.position.y = 0.01;
 scene.add(grid);
 
-// ============ PARTES ============
-const parts = [];          // cada item: { mesh, id, name }
+// ================= TRANSFORM GIZMO (arrastar com o dedo) =================
+const gizmo = new TransformControls(camera, canvas);
+gizmo.setSize(0.9);
+gizmo.setSpace('world');
+gizmo.setTranslationSnap(0.5);
+gizmo.setRotationSnap(THREE.MathUtils.degToRad(15));
+gizmo.setScaleSnap(0.25);
+scene.add(gizmo);
+
+gizmo.addEventListener('dragging-changed', (e) => {
+  controls.enabled = !e.value;
+  if (!e.value) markSaved(false);
+});
+gizmo.addEventListener('objectChange', () => {
+  updateProps();
+  refreshOutline();
+});
+
+// ================= PARTES =================
+const parts = [];
 let nextId = 1;
 
 function addPart(kind, opts) {
@@ -184,7 +283,7 @@ function removePart(mesh) {
   markSaved(false);
 }
 
-// ============ SELEÇÃO ============
+// ================= SELEÇÃO =================
 let selected = null;
 let outline = null;
 
@@ -192,10 +291,12 @@ function select(mesh) {
   if (outline) { scene.remove(outline); outline = null; }
   selected = mesh;
   if (!mesh) {
+    gizmo.detach();
     document.getElementById('noSel').style.display = 'block';
     document.getElementById('propBody').style.display = 'none';
     return;
   }
+  gizmo.attach(mesh);
   document.getElementById('noSel').style.display = 'none';
   document.getElementById('propBody').style.display = 'block';
 
@@ -204,18 +305,9 @@ function select(mesh) {
   outline = helper;
   scene.add(helper);
 
-  // preenche campos
   document.getElementById('pName').value = mesh.userData.name;
   document.getElementById('pColor').value = '#' + mesh.material.color.getHexString();
-  document.getElementById('pX').value = mesh.position.x.toFixed(1);
-  document.getElementById('pY').value = mesh.position.y.toFixed(1);
-  document.getElementById('pZ').value = mesh.position.z.toFixed(1);
-  document.getElementById('pRX').value = (mesh.rotation.x * 180 / Math.PI).toFixed(0);
-  document.getElementById('pRY').value = (mesh.rotation.y * 180 / Math.PI).toFixed(0);
-  document.getElementById('pRZ').value = (mesh.rotation.z * 180 / Math.PI).toFixed(0);
-  document.getElementById('pSX').value = mesh.scale.x.toFixed(1);
-  document.getElementById('pSY').value = mesh.scale.y.toFixed(1);
-  document.getElementById('pSZ').value = mesh.scale.z.toFixed(1);
+  updateProps();
 }
 
 function refreshOutline() {
@@ -224,7 +316,7 @@ function refreshOutline() {
   outline.box.copy(box);
 }
 
-// ============ RAYCAST (clicar) ============
+// ================= RAYCAST (tocar para selecionar) =================
 const ray = new THREE.Raycaster();
 const ptr = new THREE.Vector2();
 let downX = 0, downY = 0, downT = 0;
@@ -236,7 +328,10 @@ canvas.addEventListener('pointerup', e => {
   const dx = Math.abs(e.clientX - downX);
   const dy = Math.abs(e.clientY - downY);
   const dt = Date.now() - downT;
-  if (dx > 5 || dy > 5 || dt > 500) return; // foi drag, não clique
+  if (dx > 6 || dy > 6 || dt > 600) return;
+
+  // se o gizmo tá segurando algo, ignora
+  if (gizmo.axis) return;
 
   ptr.x = (e.clientX / innerWidth) * 2 - 1;
   ptr.y = -(e.clientY / innerHeight) * 2 + 1;
@@ -246,64 +341,22 @@ canvas.addEventListener('pointerup', e => {
   else select(null);
 });
 
-// ============ MODOS (mover/girar/escalar) ============
+// ================= MODOS =================
 let mode = 'move';
 function setMode(m) {
   mode = m;
   document.getElementById('btnMove').classList.toggle('act', m === 'move');
   document.getElementById('btnRot').classList.toggle('act', m === 'rot');
   document.getElementById('btnScale').classList.toggle('act', m === 'scale');
+  if (m === 'move')  gizmo.setMode('translate');
+  if (m === 'rot')   gizmo.setMode('rotate');
+  if (m === 'scale') gizmo.setMode('scale');
 }
 document.getElementById('btnMove').onclick = () => setMode('move');
 document.getElementById('btnRot').onclick = () => setMode('rot');
 document.getElementById('btnScale').onclick = () => setMode('scale');
 
-// ============ TECLADO (mover/selecionar/deletar) ============
-const keys = {};
-window.addEventListener('keydown', e => {
-  keys[e.code] = true;
-  if (e.target.tagName === 'INPUT') return;
-
-  if (e.code === 'Delete' || e.code === 'Backspace') {
-    if (selected) { removePart(selected); e.preventDefault(); }
-  }
-  if (e.code === 'KeyD' && e.ctrlKey && selected) {
-    cloneSelected(); e.preventDefault();
-  }
-  if (e.code === 'Digit1') setMode('move');
-  if (e.code === 'Digit2') setMode('rot');
-  if (e.code === 'Digit3') setMode('scale');
-});
-window.addEventListener('keyup', e => keys[e.code] = false);
-
-// ============ MOVER COM TECLADO ============
-let lastKeyMove = 0;
-function keyMoveLoop() {
-  const now = performance.now();
-  const dt = (now - lastKeyMove) / 1000;
-  lastKeyMove = now;
-  if (selected && dt < 0.1) {
-    const speed = 5 * dt;
-    let moved = false;
-    // setas: mover no plano XZ
-    if (keys.ArrowLeft)  { selected.position.x -= speed; moved = true; }
-    if (keys.ArrowRight) { selected.position.x += speed; moved = true; }
-    if (keys.ArrowUp)    { selected.position.z -= speed; moved = true; }
-    if (keys.ArrowDown)  { selected.position.z += speed; moved = true; }
-    // PageUp/PageDown: subir/descer
-    if (keys.PageUp)   { selected.position.y += speed; moved = true; }
-    if (keys.PageDown) { selected.position.y -= speed; moved = true; }
-    if (moved) {
-      updateProps();
-      refreshOutline();
-      markSaved(false);
-    }
-  }
-  requestAnimationFrame(keyMoveLoop);
-}
-requestAnimationFrame(keyMoveLoop);
-
-// ============ PROPRIEDADES (inputs) ============
+// ================= PROPRIEDADES =================
 function updateProps() {
   if (!selected) return;
   document.getElementById('pX').value = selected.position.x.toFixed(1);
@@ -325,7 +378,7 @@ function bindInput(id, fn) {
     markSaved(false);
   });
 }
-bindInput('pName',  (m, v) => { m.userData.name = v; refreshPartsList(); });
+bindInput('pName',  (m, v) => { m.userData.name = v; });
 bindInput('pColor', (m, v) => m.material.color.set(v));
 bindInput('pX',     (m, v) => m.position.x = +v || 0);
 bindInput('pY',     (m, v) => m.position.y = +v || 0);
@@ -338,27 +391,23 @@ bindInput('pSY',    (m, v) => m.scale.y = Math.max(0.1, +v || 0.1));
 bindInput('pSZ',    (m, v) => m.scale.z = Math.max(0.1, +v || 0.1));
 
 document.getElementById('btnDel').onclick = () => { if (selected) removePart(selected); };
-function cloneSelected() {
+document.getElementById('btnClone').onclick = () => {
   if (!selected) return;
   const m = selected;
-  const newMesh = addPart(m.userData.kind, {
+  const nm = addPart(m.userData.kind, {
     name: m.userData.name + '_copia',
     color: m.material.color.getHex(),
     x: m.position.x + 1.2, y: m.position.y, z: m.position.z,
     rot: [m.rotation.x, m.rotation.y, m.rotation.z],
     scale: [m.scale.x, m.scale.y, m.scale.z],
   });
-  select(newMesh);
-}
-document.getElementById('btnClone').onclick = cloneSelected;
+  select(nm);
+};
 
-function refreshPartsList() { /* poderia ter uma lista lateral — fica pro futuro */ }
-
-// ============ ADD / GRID ============
+// ================= ADD / GRID =================
 document.querySelectorAll('[data-add]').forEach(b => {
   b.onclick = () => {
     const kind = b.dataset.add;
-    // coloca na frente da câmera
     const dir = new THREE.Vector3();
     camera.getWorldDirection(dir);
     const tgt = controls.target.clone().add(dir.multiplyScalar(4));
@@ -372,7 +421,7 @@ document.getElementById('btnGrid').onclick = () => {
   grid.visible = gridOn;
 };
 
-// ============ SALVAR / CARREGAR ============
+// ================= SERIALIZAÇÃO =================
 const BUILD_KEY = 'wrick_studio_build';
 
 function serialize() {
@@ -391,7 +440,6 @@ function serialize() {
 }
 
 function deserialize(data) {
-  // limpa
   for (const p of parts) {
     scene.remove(p.mesh);
     p.mesh.geometry.dispose();
@@ -414,25 +462,30 @@ function deserialize(data) {
   }
 }
 
+// ================= API =================
+async function apiGetNick() { try { return localStorage.getItem('wrick_nick') || 'anonimo'; } catch { return 'anonimo'; } }
+
+async function apiCall(action, data) {
+  const nick = await apiGetNick();
+  const r = await fetch('/api/game', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ action, nick }, data || {})),
+  });
+  return r.json();
+}
+
+// ================= SALVAR / CARREGAR =================
 document.getElementById('btnSave').onclick = async () => {
   const data = serialize();
   try { localStorage.setItem(BUILD_KEY, JSON.stringify(data)); } catch (e) {}
-  try {
-    await fetch('/api/game', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveBuild', build: data }),
-    });
-  } catch (e) {}
+  try { await apiCall('saveBuild', { build: data }); } catch (e) {}
   markSaved(true);
 };
 
 document.getElementById('btnLoad').onclick = async () => {
   let data = null;
   try {
-    const r = await fetch('/api/game', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'loadBuild' }),
-    }).then(x => x.json());
+    const r = await apiCall('loadBuild');
     if (r.ok && r.build) data = r.build;
   } catch (e) {}
   if (!data) {
@@ -459,7 +512,65 @@ function markSaved(v) {
   if (v) markSaved._t = setTimeout(() => el.style.display = 'none', 1500);
 }
 
-// ============ LOOP ============
+// ================= PUBLICAR =================
+const pubModal = document.getElementById('pubModal');
+document.getElementById('btnPub').onclick = () => {
+  if (!parts.length) { alert('nada pra publicar — coloca pelo menos 1 peça'); return; }
+  pubModal.classList.add('open');
+};
+document.getElementById('pubCancel').onclick = () => pubModal.classList.remove('open');
+document.getElementById('pubOk').onclick = async () => {
+  const name = document.getElementById('pubName').value.trim();
+  const desc = document.getElementById('pubDesc').value.trim();
+  const type = document.getElementById('pubType').value;
+  const err = document.getElementById('pubErr');
+  if (!name) { err.textContent = '⚠ põe um nome'; return; }
+  err.textContent = 'publicando...';
+  const r = await apiCall('publishBuild', { name, desc, type, build: serialize() });
+  if (!r.ok) { err.textContent = '⚠ ' + (r.reason || 'erro'); return; }
+  err.style.color = '#4ac24a';
+  err.textContent = '✅ publicado!';
+  setTimeout(() => { pubModal.classList.remove('open'); err.style.color = '#ff5570'; err.textContent = ''; }, 900);
+};
+
+// ================= TOOLBOX =================
+const tbModal = document.getElementById('tbModal');
+const tbList = document.getElementById('tbList');
+let tbFilter = 'model';
+
+document.getElementById('btnTB').onclick = () => { tbModal.classList.add('open'); loadTB(); };
+document.getElementById('tbClose').onclick = () => tbModal.classList.remove('open');
+document.getElementById('tbModel').onclick = () => { tbFilter = 'model'; loadTB(); };
+document.getElementById('tbChar').onclick = () => { tbFilter = 'character'; loadTB(); };
+
+async function loadTB() {
+  tbList.innerHTML = '<div class="tbhint">carregando...</div>';
+  const r = await apiCall('listToolbox');
+  if (!r.ok) { tbList.innerHTML = '<div class="tbhint">erro ao carregar</div>'; return; }
+  const list = (r.list || []).filter(x => x.type === tbFilter);
+  if (!list.length) { tbList.innerHTML = '<div class="tbhint">nada aqui ainda</div>'; return; }
+  tbList.innerHTML = '';
+  list.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'tbitem';
+    const date = new Date(item.ts).toLocaleDateString('pt-BR');
+    el.innerHTML = `
+      <div class="info">
+        <div class="nm">${item.name}</div>
+        <div class="desc">${item.desc || '—'}</div>
+        <div class="meta">por ${item.author} · ${item.parts} peças · ${date}</div>
+      </div>
+      <div class="type ${item.type === 'character' ? 'char' : ''}">${item.type === 'character' ? '🧍 CHAR' : '📦 MODEL'}</div>`;
+    el.onclick = async () => {
+      if (!confirm('Carregar "' + item.name + '"? Isso apaga o que tá na tela.')) return;
+      const g = await apiCall('getToolbox', { id: item.id });
+      if (g.ok) { deserialize(g.build); tbModal.classList.remove('open'); markSaved(false); }
+    };
+    tbList.appendChild(el);
+  });
+}
+
+// ================= LOOP =================
 function loop() {
   controls.update();
   refreshOutline();
@@ -474,14 +585,11 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-// ============ CARREGA AO ABRIR ============
+// ================= CARREGA AO ABRIR =================
 (async () => {
   let data = null;
   try {
-    const r = await fetch('/api/game', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'loadBuild' }),
-    }).then(x => x.json());
+    const r = await apiCall('loadBuild');
     if (r.ok && r.build) data = r.build;
   } catch (e) {}
   if (!data) {
@@ -493,7 +601,7 @@ addEventListener('resize', () => {
   if (data) deserialize(data);
 })();
 
-console.log('%c🎨 WRICK STUDIO v0.1','color:#508cff;font-size:18px;font-weight:bold');
+console.log('%c🎨 WRICK STUDIO v0.3','color:#508cff;font-size:18px;font-weight:bold');
 </script>
 </body>
-  </html>
+</html>
