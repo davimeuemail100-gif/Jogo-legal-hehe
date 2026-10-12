@@ -108,7 +108,31 @@ export default async function handler(req, res) {
       })).sort((a,b) => b.players - a.players);
       return res.status(200).json({ ok:true, rooms:list });
     }
+// ===== MANDAR MENSAGEM PARA AMIGO =====
+if (action === 'sendFriendMsg') {
+  if (!nick) return res.status(200).json({ ok:false, reason:'semNick' });
+  const to = String(rest.to || '').trim();
+  const text = String(rest.text || '').slice(0, 200).trim();
+  if (!to || !text) return res.status(200).json({ ok:false });
+  if (!s.friendMsgs) s.friendMsgs = {};
+  const pair = [nick, to].sort().join('|');
+  if (!s.friendMsgs[pair]) s.friendMsgs[pair] = [];
+  s.friendMsgs[pair].push({ from: nick, to, text, t: Date.now() });
+  if (s.friendMsgs[pair].length > 200) s.friendMsgs[pair].shift();
+  await save(s);
+  return res.status(200).json({ ok:true });
+}
 
+// ===== PEGAR MENSAGENS DE AMIGO =====
+if (action === 'getFriendMsgs') {
+  if (!nick) return res.status(200).json({ ok:false, reason:'semNick' });
+  const to = String(rest.to || '').trim();
+  if (!to) return res.status(200).json({ ok:false });
+  const pair = [nick, to].sort().join('|');
+  const msgs = (s.friendMsgs && s.friendMsgs[pair]) || [];
+  return res.status(200).json({ ok:true, msgs });
+}
+    
     // ===== CHECAR SE UM NICK ESTA ONLINE =====
     if (action === 'checkOnline') {
       const target = String(rest.nick || '').trim();
