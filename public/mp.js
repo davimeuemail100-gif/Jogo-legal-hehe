@@ -21,14 +21,13 @@
   const MP = {
     nick: null, isAdmin: false, mode: null,
     roomId: null, room: null, lastV: -1,
-    avatars: {}, entities: {}, avatar: { ...DEFAULT_AVATAR },
-    started: false, menuOpen: false, chatVisible: false,
+    remote: {}, entities: {}, avatar: { ...DEFAULT_AVATAR },
+    started: false, overlay: null,
   };
 
   // ============ CSS ============
   const s = document.createElement('style');
   s.textContent = `
-    /* ---------- modais (login/salas/avatar) ---------- */
     #mpo{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
       background:rgba(4,2,8,.97);z-index:2147483000;font-family:monospace;color:#eee;
       overflow-y:auto;padding:20px;box-sizing:border-box}
@@ -63,7 +62,6 @@
     .avRow .sw button.sel{border-color:#b8ff2e;box-shadow:0 0 6px #b8ff2e}
     .avRow .sw button[data-c="RAINBOW"]{background:linear-gradient(90deg,#ff0000,#ffcc00,#00ff00,#00d4ff,#8a2be2,#ff0000)}
 
-    /* ---------- HUD (topo esquerdo) ---------- */
     #mpHud{position:fixed;top:6px;left:6px;background:rgba(10,8,15,.82);
       border:1px solid #4a2a6a;border-radius:6px;padding:4px 8px;
       font-family:monospace;font-size:10px;color:#ccc;z-index:999996;line-height:1.3;pointer-events:none;max-width:60vw}
@@ -71,14 +69,12 @@
     #mpHud .adm{color:#ffd84a}
     #mpHud .turn{color:#b8ff2e;font-weight:bold}
 
-    /* ---------- botão menu (topo direito) ---------- */
     #mpMenuBtn{position:fixed;top:6px;right:6px;width:38px;height:38px;
       background:rgba(20,16,26,.92);color:#fff;border:2px solid #508cff;border-radius:8px;
       font-size:20px;cursor:pointer;z-index:999997;display:flex;align-items:center;justify-content:center;
       touch-action:manipulation}
     #mpMenuBtn:active{background:#508cff;color:#000}
 
-    /* ---------- menu dropdown ---------- */
     #mpMenu{position:fixed;top:50px;right:6px;background:rgba(20,16,26,.98);
       border:2px solid #508cff;border-radius:10px;padding:6px;z-index:999997;
       width:200px;box-shadow:0 4px 20px rgba(0,0,0,.6);display:none;flex-direction:column;gap:4px}
@@ -90,7 +86,6 @@
     #mpMenu button.danger{background:#402030;border-color:#803040;color:#ff8a8a}
     #mpMenu button.admin{background:#4a3a10;border-color:#a08020;color:#ffd84a}
 
-    /* ---------- chat flutuante (só aparece quando abre) ---------- */
     #mpChat{position:fixed;top:50px;right:6px;width:min(90vw,340px);max-height:50vh;
       overflow-y:auto;background:rgba(10,8,15,.96);border:2px solid #4a2a6a;border-radius:10px;
       padding:8px 10px;font-family:monospace;font-size:11px;color:#ccc;z-index:999998;
@@ -107,7 +102,6 @@
       font-family:monospace;font-weight:bold;cursor:pointer;font-size:12px;touch-action:manipulation}
     #mpChatInputWrap button.closeChat{background:#402030}
 
-    /* ---------- diálogo com entidade (embaixo, centralizado) ---------- */
     #mpEntInput{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);
       width:min(90vw,420px);background:rgba(10,5,15,.98);border:2px solid #ff6a9c;
       border-radius:12px;padding:10px;z-index:2147483002;display:none;flex-direction:column;gap:6px;
@@ -124,28 +118,9 @@
       background:rgba(255,106,156,.1);border-radius:6px;border-left:3px solid #ff6a9c;display:none}
     #mpEntReply.show{display:block}
 
-    /* ---------- avatares e entidades no mundo ---------- */
-    .mpAv{position:fixed;transform:translate(-50%,-100%);text-align:center;font-family:monospace;
-      font-size:9px;font-weight:bold;color:#fff;text-shadow:0 0 4px #000,0 0 4px #000;
-      z-index:999995;pointer-events:none}
-    .mpAv .body{width:16px;height:20px;margin:0 auto 2px;border-radius:4px;position:relative;
-      border:1px solid #000;box-shadow:0 0 5px rgba(255,255,255,.35)}
-    .mpAv .head{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:9px;height:9px;
-      border-radius:50%;border:1px solid #000}
-    .mpAv .eye{position:absolute;top:3px;width:2px;height:2px;border-radius:50%}
-    .mpAv .eye.l{left:2px}.mpAv .eye.r{right:2px}
+    #mpOverlay{position:fixed;pointer-events:none;z-index:999994;image-rendering:pixelated;
+      image-rendering:crisp-edges}
 
-    .mpEnt{position:fixed;transform:translate(-50%,-100%);text-align:center;font-family:monospace;
-      font-size:9px;font-weight:bold;color:#ff6a9c;text-shadow:0 0 5px #ff006a;
-      z-index:999995;cursor:pointer;user-select:none;touch-action:manipulation}
-    .mpEnt .blob{width:34px;height:34px;border-radius:50%;
-      background:radial-gradient(circle at 40% 35%, #2a0f3a, #050208 70%);
-      border:2px solid #3a1f4a;margin:0 auto 2px;animation:mpB 2s ease-in-out infinite}
-    .mpEnt.eye .blob{background:radial-gradient(circle at 50% 50%, #ff3347 8%, #1a0508 70%)}
-    .mpEnt.shadow .blob{background:#0a0508;border-color:#000}
-    @keyframes mpB{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-
-    /* ---------- painel admin ---------- */
     #mpAdm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
       width:min(92vw,400px);max-height:80vh;overflow-y:auto;background:#14101a;
       border:2px solid #ffd84a;border-radius:12px;padding:14px;color:#eee;
@@ -160,7 +135,6 @@
     #mpAdm .row{display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center;margin:3px 0}
     #mpAdm .st{color:#0f0;font-size:10px;min-height:14px;text-align:center;margin-top:6px}
 
-    /* ---------- jumpscare ---------- */
     #mpJump{position:fixed;inset:0;background:#000;z-index:2147483647;display:flex;
       align-items:center;justify-content:center;color:#ff2030;font-family:monospace;
       font-size:90px;font-weight:bold;pointer-events:none;animation:mpJ .45s ease-out;
@@ -478,6 +452,13 @@
     document.body.appendChild(h);
     MP.turnEl = h;
 
+    // Overlay (onde os outros jogadores vão ser desenhados)
+    const ov = $('canvas', { id: 'mpOverlay' });
+    ov.width = 320; ov.height = 180;
+    document.body.appendChild(ov);
+    MP.overlay = ov;
+    MP.overlayCtx = ov.getContext('2d');
+
     // Botão menu
     const btn = $('button', { id: 'mpMenuBtn' }); btn.textContent = '☰';
     btn.onclick = (e) => {
@@ -501,7 +482,7 @@
     `;
     document.body.appendChild(menu);
 
-    // Chat (só aparece quando abre)
+    // Chat
     const chat = $('div', { id: 'mpChat' });
     chat.innerHTML = `<div id="mpChatMsgs"></div>
       <div id="mpChatInputWrap">
@@ -523,7 +504,6 @@
     chat.querySelector('#mpChatClose').onclick = () => { chat.classList.remove('open'); menu.classList.remove('open'); };
     txt.onkeydown = e => { if (e.key === 'Enter') enviar(); };
 
-    // Ações do menu
     menu.querySelector('#mmAv').onclick = () => { menu.classList.remove('open'); avatarScreen(() => { api('setAvatar', { avatar: MP.avatar }); }); };
     menu.querySelector('#mmChat').onclick = () => {
       chat.classList.toggle('open');
@@ -537,7 +517,6 @@
       location.reload();
     };
 
-    // Botão admin (só se for MAIN_ADMIN)
     if (MP.nick === ADMIN_NICK) {
       MP.isAdmin = true;
       const ab = $('button', { id: 'mmAdmin', class: 'admin' });
@@ -546,7 +525,7 @@
       menu.insertBefore(ab, menu.firstChild);
     }
 
-    // Caixa de input pra entidade
+    // Diálogo com entidade
     const ei = $('div', { id: 'mpEntInput' });
     ei.innerHTML = `
       <div class="who" id="mpEntWho"></div>
@@ -581,7 +560,6 @@
     ei.querySelector('#mpEntSend').onclick = entSend;
     entTxt.onkeydown = e => { if (e.key === 'Enter') entSend(); };
 
-    // Fecha menu ao clicar fora
     document.addEventListener('click', (e) => {
       const m = document.getElementById('mpMenu');
       const b = document.getElementById('mpMenuBtn');
@@ -691,7 +669,7 @@
         updateHud(room);
         syncChat(room);
         syncEntities(room);
-        syncAvatars(room);
+        syncRemote(room);
         if (MP.adminEntsRefresh && document.getElementById('mpAdm')) MP.adminEntsRefresh();
       }
     } catch (e) {}
@@ -705,37 +683,25 @@
     lastChatLen = room.chat.length;
   }
 
-  function syncAvatars(room) {
+  // ============ OUTROS JOGADORES (só guarda os dados) ============
+  function syncRemote(room) {
     const used = {};
     for (const nick in room.players) {
       if (nick === MP.nick) continue;
       const p = room.players[nick];
       if (p.mode !== 'multi') continue;
       used[nick] = true;
-      let el = MP.avatars[nick];
-      if (!el) {
-        el = $('div', { class: 'mpAv' });
-        document.body.appendChild(el);
-        MP.avatars[nick] = el;
+      let r = MP.remote[nick];
+      if (!r) {
+        r = { x: p.x, y: p.y, face: p.face, avatar: p.avatar, lastX: p.x, lastY: p.y, anim: 0, moving: 0 };
+        MP.remote[nick] = r;
       }
-      const a = p.avatar || DEFAULT_AVATAR;
-      const sig = JSON.stringify(a);
-      if (el._sig !== sig) {
-        el._sig = sig;
-        const hairTop = a.hair === 'RAINBOW' ? '#ff0000' : a.hair;
-        el.innerHTML = `
-          <div class="body" style="background:${a.shirt};border-color:${a.pants}">
-            <div class="head" style="background:linear-gradient(180deg,${hairTop} 0 50%, ${a.skin} 50% 100%)"></div>
-            <div class="eye l" style="background:${a.eyes}"></div>
-            <div class="eye r" style="background:${a.eyes}"></div>
-          </div>
-          ${nick}`;
-      }
-      el._x = p.x; el._y = p.y;
+      r.x = p.x; r.y = p.y; r.face = p.face; r.avatar = p.avatar || DEFAULT_AVATAR;
     }
-    for (const nick in MP.avatars) if (!used[nick]) { MP.avatars[nick].remove(); delete MP.avatars[nick]; }
+    for (const nick in MP.remote) if (!used[nick]) delete MP.remote[nick];
   }
 
+  // ============ ENTIDADES ============
   function syncEntities(room) {
     const used = {};
     (room.entities || []).forEach(e => {
@@ -772,38 +738,98 @@
     setTimeout(() => j.remove(), 500);
   }
 
+  // ============ HEARTBEAT (manda posição sempre) ============
   let lastSent = 0;
+  let lastX = 40, lastY = 120, lastFace = 1;
   function moveLoop() {
-    const g = window.StickDebug && window.StickDebug.G;
-    if (g && g.player && MP.roomId) {
+    if (MP.roomId) {
+      const g = window.StickDebug && window.StickDebug.G;
+      if (g && g.player) {
+        lastX = Math.round(g.player.x);
+        lastY = Math.round(g.player.y);
+        lastFace = g.player.face;
+      }
       const now = Date.now();
       if (now - lastSent > 500) {
         lastSent = now;
-        api('move', { x: Math.round(g.player.x), y: Math.round(g.player.y), face: g.player.face }).catch(() => {});
+        api('move', { x: lastX, y: lastY, face: lastFace }).catch(() => {});
       }
     }
-    setTimeout(moveLoop, 400);
+    setTimeout(moveLoop, 500);
   }
 
+  // ============ RENDER: desenha os outros Wricks no mapa ============
   function renderLoop() {
     const g = window.StickDebug && window.StickDebug.G;
-    if (g && g.camX != null) {
-      const canvas = document.getElementById('game');
-      if (canvas) {
-        const rect = canvas.getBoundingClientRect();
-        const scale = rect.width / 320;
-        for (const nick in MP.avatars) {
-          const el = MP.avatars[nick];
-          el.style.left = (rect.left + (el._x - g.camX) * scale) + 'px';
-          el.style.top  = (rect.top  + (el._y - g.camY) * scale) + 'px';
-        }
-        for (const id in MP.entities) {
-          const el = MP.entities[id];
-          el.style.left = (rect.left + (el._x - g.camX) * scale) + 'px';
-          el.style.top  = (rect.top  + (el._y - g.camY) * scale) + 'px';
-        }
-      }
+    const ov = MP.overlay;
+    const ctx = MP.overlayCtx;
+    if (!ov || !ctx) { requestAnimationFrame(renderLoop); return; }
+
+    const canvas = document.getElementById('game');
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect();
+      ov.style.left = rect.left + 'px';
+      ov.style.top = rect.top + 'px';
+      ov.style.width = rect.width + 'px';
+      ov.style.height = rect.height + 'px';
     }
+
+    ctx.clearRect(0, 0, 320, 180);
+    ctx.imageSmoothingEnabled = false;
+
+    if (g && g.camX != null) {
+      const camX = g.camX, camY = g.camY;
+
+      // --- OUTROS JOGADORES ---
+      for (const nick in MP.remote) {
+        const r = MP.remote[nick];
+        const a = r.avatar || DEFAULT_AVATAR;
+
+        const dx = Math.abs(r.x - r.lastX);
+        const dy = Math.abs(r.y - r.lastY);
+        const moving = dx > 0.4 || dy > 0.4;
+        if (moving) { r.moving = 12; r.anim += 0.15; }
+        else if (r.moving > 0) r.moving--;
+        r.lastX = r.x; r.lastY = r.y;
+
+        let frame = 'idle';
+        if (r.moving > 0) frame = ['walk1','walk2','walk3','walk2'][Math.floor(r.anim) % 4];
+
+        const recolor = {
+          h: a.hair === 'RAINBOW' ? '#ff2030' : a.hair,
+          H: shadeLocal(a.hair === 'RAINBOW' ? '#ff2030' : a.hair, -0.25),
+          s: a.skin, S: shadeLocal(a.skin, -0.15),
+          g: a.shirt, G: shadeLocal(a.shirt, -0.2),
+          p: a.pants, P: shadeLocal(a.pants, -0.25),
+          t: a.shoes,
+          e: a.eyes,
+        };
+
+        let img;
+        try { img = Sprites.get('player', frame, recolor); } catch (e) { continue; }
+
+        const px = Math.round(r.x + 4 - camX - 6);
+        const py = Math.round(r.y + 8 - camY - 8);
+        ctx.save();
+        ctx.translate(px + 6, py + 8);
+        ctx.scale(r.face < 0 ? -1 : 1, 1);
+        ctx.drawImage(img, -6, -8);
+        ctx.restore();
+
+        // nome em cima
+        ctx.font = '6px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const nameY = py - 4;
+        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        ctx.fillText(nick, px + 7, nameY + 1);
+        ctx.fillStyle = '#b8ff2e';
+        ctx.fillText(nick, px + 6, nameY);
+      }
+
+      // --- ENTIDADES já são HTML por cima, então não desenha aqui ---
+    }
+
     requestAnimationFrame(renderLoop);
   }
 
