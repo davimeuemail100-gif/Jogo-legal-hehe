@@ -1,17 +1,5 @@
 /* =====================================================================
    WRICK E SEUS AMIGOS — NÚCLEO DO JOGO
-   ---------------------------------------------------------------------
-   Ordem dos arquivos (index.html): config → sprites → audio → messages
-   → levels → world → game.
-   Seções deste arquivo:
-     1. Tela e entrada (teclado / toque)
-     2. Estado do jogo e carregamento de fases
-     3. Física e colisão do Wrick
-     4. Mensagens de terror, sequências e efeitos
-     5. API usada pelos eventos das fases (makeApi)
-     6. Atualização de cada estado (título, intro, jogo, fim de fase...)
-     7. Desenho (cenário, entidades, luz, interface)
-     8. Loop principal
    ===================================================================== */
 (function () {
   'use strict';
@@ -80,7 +68,7 @@
      2. ESTADO DO JOGO E FASES
      ================================================================ */
   let fimVisto = false;
-  try { fimVisto = localStorage.getItem('stick_amigos_fim') === '1'; } catch (e) { /* sem storage */ }
+  try { fimVisto = localStorage.getItem('stick_amigos_fim') === '1'; } catch (e) {}
 
   const G = {
     state: 'title', stateT: 0, t: 0,
@@ -96,6 +84,38 @@
   };
   const titleBg = Backdrop.build(THEMES.farm, 1);
 
+  // ===== AUTO-SNAP: empurra NPCs/decos/props pro chão =====
+  function _snapToGround(w) {
+    const solid = (c, r) => {
+      if (c < 0 || c >= w.cols) return true;
+      if (r < 0 || r >= w.rows) return r >= w.rows;
+      const t = w.tiles[r][c];
+      return t === '#' || t === 'B';
+    };
+    const plat = (c, r) => {
+      if (c < 0 || c >= w.cols || r < 0 || r >= w.rows) return false;
+      const t = w.tiles[r][c];
+      return t === '=' || t === '~';
+    };
+    const findGround = (col, fromRow) => {
+      for (let r = Math.max(0, fromRow); r < w.rows; r++) {
+        if (solid(col, r) || plat(col, r)) return r * TS;
+      }
+      return w.height + 32;
+    };
+    const fixList = (list) => {
+      for (const item of list) {
+        const col = Math.floor((item.x + 8) / TS);
+        const startRow = Math.max(0, Math.floor((item.y + 16) / TS));
+        const groundY = findGround(col, startRow);
+        item.y = groundY - TS;
+      }
+    };
+    fixList(w.npcs);
+    fixList(w.decos);
+    fixList(w.props);
+  }
+
   function newPlayer(s) {
     return {
       x: s.x, y: s.y, vx: 0, vy: 0, face: 1, onGround: false, coyote: 0, jumpBuf: 0, cut: true,
@@ -108,6 +128,7 @@
     const L = LEVELS[i];
     G.levelIndex = i; G.level = L; G.theme = THEMES[L.theme];
     G.world = World.build(L);
+    _snapToGround(G.world);
     G.terrain = World.renderTerrain(G.world, G.theme);
     G.bg = Backdrop.build(G.theme, i + 2);
     G.player = newPlayer(G.world.start);
@@ -609,7 +630,7 @@
       Music.stop(0.05); Ambient.stopAll();
       G.messages = []; G.black = 1; G.dialog = null; G.seqs = [];
       say('querSerAmigo');
-      try { localStorage.setItem('stick_amigos_fim', '1'); } catch (e) { /* ok */ }
+      try { localStorage.setItem('stick_amigos_fim', '1'); } catch (e) {}
       fimVisto = true;
     },
   };
@@ -1534,20 +1555,11 @@
   }
 
   const FACE = [
-    '....ssssssssssss....',
-    '..ssssssssssssssss..',
-    '.ssssssssssssssssss.',
-    '.ssKKKKssssssKKKKss.',
-    '.ssKKKKssssssKKKKss.',
-    '.ssKwKKssssssKKwKss.',
-    '.ssKKKKssssssKKKKss.',
-    '.ssssssssssssssssss.',
-    '.ssssssssKKssssssss.',
-    '.ssssssssssssssssss.',
-    '..ssKKKKKKKKKKKKss..',
-    '..sssKsKsKsKsKsss...',
-    '...ssssssssssssss...',
-    '.....ssssssssss.....',
+    '....ssssssssssss....','..ssssssssssssssss..','.ssssssssssssssssss.',
+    '.ssKKKKssssssKKKKss.','.ssKKKKssssssKKKKss.','.ssKwKKssssssKKwKss.',
+    '.ssKKKKssssssKKKKss.','.ssssssssssssssssss.','.ssssssssKKssssssss.',
+    '.ssssssssssssssssss.','..ssKKKKKKKKKKKKss..','..sssKsKsKsKsKsss...',
+    '...ssssssssssssss...','.....ssssssssss.....',
   ];
   function drawScare(ctx) {
     ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
