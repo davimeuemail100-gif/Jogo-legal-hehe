@@ -7,6 +7,9 @@ const MAIN_ADMIN = 'SeversPrevadeFedora';
 const TTL = 20;
 const ROOM_TTL = 300;
 
+const NICK_MAX = 24;
+const NICK_REGEX = new RegExp('^[\\wÀ-ÿ\\-_. ]{2,' + NICK_MAX + '}$');
+
 const DEFAULT_AVATAR = {
   skin: '#ffffff', hair: 'RAINBOW', shirt: '#8b5a2b',
   pants: '#1a1a1a', shoes: '#ff8a2a', eyes: '#8a2be2',
@@ -120,7 +123,7 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const { action, nick: rawNick, hwid: rawHwid, roomId: rawRoomId, ...rest } = body;
     const s = await getState();
-    const nick = rawNick ? String(rawNick).slice(0, 18) : null;
+    const nick = rawNick ? String(rawNick).slice(0, NICK_MAX) : null;
     const hwid = rawHwid ? String(rawHwid).slice(0, 32) : null;
     const roomId = rawRoomId ? String(rawRoomId).toUpperCase().slice(0, 8) : null;
 
@@ -136,7 +139,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, rooms: list });
     }
 
-    // ===== SALVAR BUILD (Studio) =====
+    // ===== SALVAR BUILD =====
     if (action === 'saveBuild') {
       if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
       s.builds[nick] = rest.build;
@@ -144,7 +147,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // ===== CARREGAR BUILD (Studio) =====
+    // ===== CARREGAR BUILD =====
     if (action === 'loadBuild') {
       if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
       const b = s.builds[nick] || null;
@@ -154,7 +157,7 @@ export default async function handler(req, res) {
     // ===== CRIAR SALA =====
     if (action === 'createRoom') {
       if (!hwid) return res.status(200).json({ ok: false, reason: 'semHWID' });
-      if (!nick || !/^[\wÀ-ÿ\-_. ]{2,18}$/.test(nick))
+      if (!nick || !NICK_REGEX.test(nick))
         return res.status(200).json({ ok: false, reason: 'nickInvalido' });
       const roomName = String(rest.roomName || (nick + "'s room")).slice(0, 24);
       const maxPlayers = Math.max(2, Math.min(200, +rest.maxPlayers || 20));
@@ -185,7 +188,7 @@ export default async function handler(req, res) {
     // ===== ENTRAR EM SALA =====
     if (action === 'joinRoom') {
       if (!hwid) return res.status(200).json({ ok: false, reason: 'semHWID' });
-      if (!nick || !/^[\wÀ-ÿ\-_. ]{2,18}$/.test(nick))
+      if (!nick || !NICK_REGEX.test(nick))
         return res.status(200).json({ ok: false, reason: 'nickInvalido' });
       const r = s.rooms[roomId];
       if (!r) return res.status(200).json({ ok: false, reason: 'salaNaoExiste' });
@@ -259,7 +262,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // ---- CHAT entre jogadores ----
     if (action === 'chat') {
       if (me.mode !== 'multi') return res.status(200).json({ ok: false, reason: 'solo' });
       if (r.turnNick && r.turnNick !== nick)
@@ -275,7 +277,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, turn: r.turnNick });
     }
 
-    // ---- FALAR COM ENTIDADE (IA responde) ----
     if (action === 'entityTalk') {
       const e = r.entities.find(x => x.id === rest.id);
       if (!e) return res.status(200).json({ ok: false, reason: 'entidadeNaoExiste' });
@@ -304,7 +305,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, text: out, scare });
     }
 
-    // ---- SPAWN ENTITY ----
     if (action === 'spawnEntity') {
       if (!me.isAdmin) return res.status(200).json({ ok: false, reason: 'notAdmin' });
       const kind = ['goo', 'eye', 'shadow'].includes(rest.kind) ? rest.kind : 'goo';
@@ -355,4 +355,4 @@ export default async function handler(req, res) {
     console.error(e);
     return res.status(500).json({ ok: false, error: String(e) });
   }
-    }
+}
