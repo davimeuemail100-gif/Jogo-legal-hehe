@@ -3,7 +3,7 @@ import { Redis } from '@upstash/redis';
 const redis = Redis.fromEnv();
 const KEY = 'wrick:state';
 const GROQ_KEY = process.env.GROQ_KEY;
-const MAIN_ADMIN = 'SeversPrevadeFedora';
+const MAIN_ADMIN = 'DeRaminWrick';
 const TTL = 20;
 const ROOM_TTL = 3600;
 
