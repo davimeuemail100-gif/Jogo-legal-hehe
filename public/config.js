@@ -1,0 +1,120 @@
+const CONFIG = {
+  TITLE: 'WRICK E SEUS AMIGOS',
+
+  WIDTH: 320,
+  HEIGHT: 180,
+  TILE: 16,
+
+  FONT: '"Press Start 2P", "Courier New", monospace',
+
+  PHYSICS: {
+    gravity: 950,
+    runSpeed: 90,
+    groundAccel: 1000,
+    groundFriction: 1300,
+    airAccel: 700,
+    jumpVelocity: 400,
+    jumpCut: 1,
+    maxFall: 330,
+    coyoteTime: 0.02,
+    jumpBuffer: 0.02,
+  },
+
+  PLAYER: {
+    width: 8,
+    height: 14,
+    interactRange: 22,
+  },
+
+  DIFFICULTY: {
+    respawnDelay: 1.1,
+    glitchPlatformTime: 0.55,
+    glitchPlatformRespawn: 2.5,
+  },
+
+  SECRETS: {
+    idleSeconds: 30,
+    deathsForMessage: 3,
+  },
+
+  FRIEND: {
+    delay: 16,
+    waitCall: 110,
+    teleport: 200,
+  },
+
+  AUDIO: { master: 0.6, music: 0.3, sfx: 0.45 },
+
+  TEXT_SPEED: 42,
+
+  START_LEVEL: 0,
+  DEBUG: false,
+
+  KEYS: {
+    left:     ['ArrowLeft', 'KeyA', 'TouchLeft'],
+    right:    ['ArrowRight', 'KeyD', 'TouchRight'],
+    jump:     ['Space', 'KeyW', 'ArrowUp', 'TouchJump'],
+    interact: ['KeyE', 'TouchInteract'],
+    confirm:  ['Enter', 'Space', 'KeyE', 'TouchJump', 'TouchInteract'],
+    pause:    ['Escape', 'KeyP'],
+  },
+};
+
+const THEMES = {
+  farm: {
+    sky: ['#4fbfff', '#7fd4ff', '#b3ebff', '#e2f8ff'],
+    sun: '#fff27a', sunType: 'sun', cloud: '#ffffff',
+    mountain: '#a3c6f2', mountainShade: '#8bb0e3', snow: '#eef6ff',
+    hill: '#7fdc72', hillLight: '#a5ef8a', hillShade: '#5fc15a', bgTree: '#4db35a',
+    grass: '#5bd35b', grassLight: '#a4f27a', dirt: '#c47d45', dirtDark: '#9a5c2d', dirtLight: '#dc9a5f',
+    brick: '#9a93b8', brickDark: '#6f6a8a', brickLight: '#bdb7d6', plank: '#dba062', plankDark: '#a86c35',
+    leaf: '#48c457', leafLight: '#8cec70', leafDark: '#2e9a46', trunk: '#8a5a32', trunkDark: '#6b4224',
+    houseWall: '#fff1d6', houseRoof: '#ef5b58', houseDoor: '#9a5a33', houseWindow: '#9fe0ff',
+    barn: '#e2504a', barnDark: '#a83632', fence: '#f2e2c4', fenceDark: '#c8b08a',
+    caveBg: '#4b3f63', roomBg: '#2a1f2e',
+    treeStyle: 'round', particles: 'butterflies', vignette: 0.12, darkness: 0,
+  },
+  launch: {
+    sky: ['#5fb0ea', '#93cdee', '#ffd9a8', '#ffeccb'],
+    sun: '#ffe07a', sunType: 'lowsun', cloud: '#fff4e4',
+    mountain: '#b0b9df', mountainShade: '#98a3cc', snow: '#f4eee6',
+    hill: '#88d062', hillLight: '#aee586', hillShade: '#6db552', bgTree: '#56a64e',
+    grass: '#63c95a', grassLight: '#a8e877', dirt: '#bb7342', dirtDark: '#8f5429', dirtLight: '#d48e56',
+    brick: '#9a90b0', brickDark: '#6e6684', brickLight: '#bab1cc', plank: '#d49a5c', plankDark: '#a26733',
+    leaf: '#52b955', leafLight: '#95e070', leafDark: '#358f45', trunk: '#865632', trunkDark: '#673f22',
+    houseWall: '#ffeccc', houseRoof: '#e8584c', houseDoor: '#955631', houseWindow: '#ffd98a',
+    caveBg: '#473b5a', roomBg: '#2a1f2e',
+    treeStyle: 'round', particles: 'leaves', vignette: 0.2, darkness: 0,
+  },
+  dusk: {
+    sky: ['#1c1440', '#3e2466', '#8a3a6e', '#d4606a'],
+    sun: '#ff9a5a', sunType: 'bigsun', cloud: '#6a3a6a',
+    mountain: '#3e2a5a', mountainShade: '#30204a', snow: null,
+    hill: '#33503f', hillLight: '#456650', hillShade: '#28402f', bgTree: '#1f3328',
+    grass: '#3f7a4a', grassLight: '#5e9a5e', dirt: '#7a4a36', dirtDark: '#583224', dirtLight: '#94604a',
+    brick: '#5e4e6e', brickDark: '#40344e', brickLight: '#76648a', plank: '#9a6a46', plankDark: '#6a4428',
+    leaf: '#2f6a42', leafLight: '#4f8a56', leafDark: '#1f4a30', trunk: '#4e3226', trunkDark: '#36221a',
+    houseWall: '#6a5260', houseRoof: '#4a2a3a', houseDoor: '#1a0f14', houseWindow: '#120a10',
+    caveBg: '#2a1f2e', roomBg: '#2a1f2e',
+    treeStyle: 'round', particles: 'fireflies', vignette: 0.45, darkness: 0.32, goo: true,
+  },
+  alone: {
+    sky: ['#040206', '#0c040e', '#1c0812', '#2e0c14'],
+    sun: '#c8303c', sunType: 'eye', cloud: '#1a0f15',
+    mountain: '#150a11', mountainShade: '#10070d', snow: null, jagged: true,
+    hill: '#1c1116', hillLight: '#261820', hillShade: '#140b10', bgTree: '#0d070a',
+    grass: '#3d3438', grassLight: '#5a4d52', dirt: '#2a1f22', dirtDark: '#1c1417', dirtLight: '#3a2c30',
+    brick: '#3a2f3a', brickDark: '#261e26', brickLight: '#4d404d', plank: '#4a3a35', plankDark: '#33271f',
+    leaf: '#2a2226', leafLight: '#3a2f33', leafDark: '#1a1417', trunk: '#241a1d', trunkDark: '#160f12',
+    houseWall: '#3b3238', houseRoof: '#241a1f', houseDoor: '#140c10', houseWindow: '#050305',
+    caveBg: '#120b10', roomBg: '#1d1320',
+    treeStyle: 'dead', particles: 'ash', vignette: 0.5, darkness: 0.75, darkUI: true,
+  },
+};
+
+const CHARACTERS = {
+  stick:  { name: 'WRICK',  color: '#b8ff2e', pitch: 600 },
+  eri:    { name: 'ERI',    color: '#fff1d0', pitch: 760 },
+  zoom:   { name: 'ZOOM',   color: '#ff9a3a', pitch: 470 },
+  torajo: { name: 'TORAJO', color: '#a6ec5a', pitch: 560 },
+};
