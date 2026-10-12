@@ -9,7 +9,7 @@ const ROOM_TTL = 3600;
 const NICK_MAX = 24;
 const NICK_REGEX = new RegExp('^[\\wÀ-ÿ\\-_. ]{2,' + NICK_MAX + '}$');
 const DEFAULT_AVATAR = { skin:'#ffffff', hair:'RAINBOW', shirt:'#8b5a2b', pants:'#1a1a1a', shoes:'#ff8a2a', eyes:'#8a2be2' };
-const EMPTY = () => ({ v: 0, rooms: {}, hwidIndex: {}, builds: {}, toolbox: [], leaderboard: {}, bans: {} });
+const EMPTY = () => ({ v: 0, rooms: {}, hwidIndex: {}, builds: {}, toolbox: [], leaderboard: {}, bans: {}, friendMsgs: {} });
 
 async function getState() {
   let s = await redis.get(KEY);
@@ -21,6 +21,7 @@ async function getState() {
   if (!s.toolbox) s.toolbox = [];
   if (!s.leaderboard) s.leaderboard = {};
   if (!s.bans) s.bans = {};
+  if (!s.friendMsgs) s.friendMsgs = {};
   const now = Date.now();
   let mudou = false;
   for (const rid in s.rooms) {
@@ -108,31 +109,44 @@ export default async function handler(req, res) {
       })).sort((a,b) => b.players - a.players);
       return res.status(200).json({ ok:true, rooms:list });
     }
-// ===== MANDAR MENSAGEM PARA AMIGO =====
-if (action === 'sendFriendMsg') {
-  if (!nick) return res.status(200).json({ ok:false, reason:'semNick' });
-  const to = String(rest.to || '').trim();
-  const text = String(rest.text || '').slice(0, 200).trim();
-  if (!to || !text) return res.status(200).json({ ok:false });
-  if (!s.friendMsgs) s.friendMsgs = {};
-  const pair = [nick, to].sort().join('|');
-  if (!s.friendMsgs[pair]) s.friendMsgs[pair] = [];
-  s.friendMsgs[pair].push({ from: nick, to, text, t: Date.now() });
-  if (s.friendMsgs[pair].length > 200) s.friendMsgs[pair].shift();
-  await save(s);
-  return res.status(200).json({ ok:true });
-}
 
-// ===== PEGAR MENSAGENS DE AMIGO =====
-if (action === 'getFriendMsgs') {
-  if (!nick) return res.status(200).json({ ok:false, reason:'semNick' });
-  const to = String(rest.to || '').trim();
-  if (!to) return res.status(200).json({ ok:false });
-  const pair = [nick, to].sort().join('|');
-  const msgs = (s.friendMsgs && s.friendMsgs[pair]) || [];
-  return res.status(200).json({ ok:true, msgs });
-}
-    
+    // ===== MANDAR MENSAGEM PARA AMIGO =====
+    if (action === 'sendFriendMsg') {
+      if (!nick) return res.status(200).json({ ok:false, reason:'semNick' });
+      const to = String(rest.to || '').trim();
+      const text = String(rest.text || '').slice(0, 200).trim();
+      if (!to || !text) return res.status(200).json({ ok:false });
+      const pair = [nick, to].sort().join('|');
+      if (!s.friendMsgs[pair]) s.friendMsgs[pair] = [];
+      s.friendMsgs[pair].push({ from: nick, to, text, t: Date.now() });
+      if (s.friendMsgs[pair].length > 200) s.friendMsgs[pair].shift();
+      await save(s);
+      return res.status(200).json({ ok:true });
+    }
+
+    // ===== PEGAR MENSAGENS DE AMIGO =====
+    if (action === 'getFriendMsgs') {
+      if (!nick) return res.status(200).json({ ok:false, reason:'semNick' });
+      const to = String(rest.to || '').trim();
+      if (!to) return res.status(200).json({ ok:false });
+      const pair = [nick, to].sort().join('|');
+      const msgs = s.friendMsgs[pair] || [];
+      return res.status(200).json({ ok:true, msgs });
+    }
+
+    // ===== PEGAR TODAS AS MENSAGENS DE AMIGOS =====
+    if (action === 'getAllFriendMsgs') {
+      if (!nick) return res.status(200).json({ ok:false });
+      const out = {};
+      for (const pair in s.friendMsgs) {
+        const parts = pair.split('|');
+        if (!parts.includes(nick)) continue;
+        const other = parts[0] === nick ? parts[1] : parts[0];
+        out[other] = s.friendMsgs[pair];
+      }
+      return res.status(200).json({ ok:true, msgs: out });
+    }
+
     // ===== CHECAR SE UM NICK ESTA ONLINE =====
     if (action === 'checkOnline') {
       const target = String(rest.nick || '').trim();
