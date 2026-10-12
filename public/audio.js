@@ -1,7 +1,6 @@
 /* =====================================================================
    ÁUDIO — tudo sintetizado com WebAudio
    ===================================================================== */
-
 const _ar = (a, b) => a + Math.random() * (b - a);
 const _ach = (p) => Math.random() < p;
 const midiToFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
@@ -57,54 +56,57 @@ const AudioSys = {
   },
 };
 
-// ===== MELODIAS =====
-const HAPPY_MELODY = [
-  72, 76, 79, 76,  77, 76, 74, 0,  71, 74, 77, 74,  76, 74, 72, 0,
-  72, 76, 79, 84,  81, 79, 77, 76, 74, 77, 76, 74,  72, 0, 72, 0,
-];
-const HAPPY_BASS = [
-  48, 0, 55, 0,  53, 0, 55, 0,  55, 0, 50, 0,  48, 0, 55, 0,
-  48, 0, 52, 0,  53, 0, 57, 0,  55, 0, 55, 0,  48, 0, 48, 0,
-];
-const FRIENDS_MELODY = [
-  67, 0, 72, 74,  76, 74, 72, 0,  69, 72, 74, 0,  72, 0, 67, 0,
-  65, 69, 72, 74, 76, 77, 76, 74, 72, 71, 72, 74, 72, 0, 0, 0,
-];
-const FRIENDS_BASS = [
-  48, 0, 55, 0,  48, 0, 55, 0,  53, 0, 57, 0,  48, 0, 55, 0,
-  53, 0, 57, 0,  48, 0, 52, 0,  55, 0, 50, 0,  48, 0, 48, 0,
-];
+const HAPPY_MELODY = [72,76,79,76,77,76,74,0,71,74,77,74,76,74,72,0,72,76,79,84,81,79,77,76,74,77,76,74,72,0,72,0];
+const HAPPY_BASS = [48,0,55,0,53,0,55,0,55,0,50,0,48,0,55,0,48,0,52,0,53,0,57,0,55,0,55,0,48,0,48,0];
+const FRIENDS_MELODY = [67,0,72,74,76,74,72,0,69,72,74,0,72,0,67,0,65,69,72,74,76,77,76,74,72,71,72,74,72,0,0,0];
+const FRIENDS_BASS = [48,0,55,0,48,0,55,0,53,0,57,0,48,0,55,0,53,0,57,0,48,0,52,0,55,0,50,0,48,0,48,0];
 
-// ===== FLOWEY — "Your Best Friend" (Undertale) — alegre e travesso =====
+// ===== "YOUR BEST FRIEND" — tema do Flowey (Undertale) =====
 const FLOWEY_MELODY = [
-  78, 78, 78, 78,  82, 80, 78, 75,  78, 0, 78, 78,  75, 0, 78, 0,
-  78, 78, 78, 78,  82, 80, 78, 75,  78, 0, 78, 78,  75, 0, 0, 0,
+  74, 74, 74, 74,  79, 77, 74, 70,
+  74, 74, 74, 74,  79, 77, 74, 70,
+  76, 77, 79, 81,  82, 81, 79, 77,
+  76, 74, 72, 70,  69, 69, 69, 69,
+  74, 72, 69, 65,  69, 69, 69, 69,
+  74, 72, 69, 65,  69, 69, 69, 69,
+  74, 74, 74, 74,  79, 77, 74, 70,
+  74, 0, 0, 0,  0, 0, 0, 0,
 ];
 const FLOWEY_BASS = [
-  54, 0, 54, 0,  58, 0, 54, 0,  54, 0, 51, 0,  54, 0, 54, 0,
-  54, 0, 54, 0,  58, 0, 54, 0,  54, 0, 51, 0,  54, 0, 54, 0,
+  50, 0, 50, 0,  46, 0, 46, 0,
+  50, 0, 50, 0,  46, 0, 46, 0,
+  43, 0, 43, 0,  43, 0, 43, 0,
+  41, 0, 41, 0,  41, 0, 41, 0,
+  43, 0, 43, 0,  43, 0, 43, 0,
+  41, 0, 41, 0,  41, 0, 41, 0,
+  50, 0, 50, 0,  46, 0, 46, 0,
+  50, 0, 50, 0,  0, 0, 0, 0,
 ];
 
-// ===== NAPSTABLOOK — "Spooktune" (Undertale) — assombrado, lento, triste =====
+// ===== SPOOKTUNE — tema do Napstablook (Undertale) =====
 const SPOOK_MELODY = [
-  69, 0, 72, 74,  72, 0, 69, 0,  67, 0, 69, 71,  69, 0, 67, 0,
-  65, 0, 67, 69,  67, 0, 65, 0,  64, 0, 65, 67,  65, 0, 0, 0,
+  72, 76, 79, 84,  83, 79, 81, 76,  79, 72, 76, 79,  84, 83, 79, 81,
+  83, 84, 83, 81,  79, 77, 76, 74,  72, 71, 72, 84,  83, 81, 79, 84,
+  72, 76, 79, 84,  83, 79, 81, 76,  79, 72, 76, 79,  84, 83, 79, 81,
+  83, 84, 83, 81,  79, 77, 76, 74,  72, 0, 0, 0,  0, 0, 0, 0,
 ];
 const SPOOK_BASS = [
-  45, 0, 45, 0,  45, 0, 45, 0,  43, 0, 43, 0,  43, 0, 43, 0,
-  41, 0, 41, 0,  41, 0, 41, 0,  40, 0, 40, 0,  40, 0, 40, 0,
+  48, 0, 55, 0,  48, 0, 55, 0,  53, 0, 57, 0,  48, 0, 55, 0,
+  53, 0, 57, 0,  48, 0, 52, 0,  55, 0, 50, 0,  48, 0, 48, 0,
+  48, 0, 55, 0,  48, 0, 55, 0,  53, 0, 57, 0,  48, 0, 55, 0,
+  53, 0, 57, 0,  48, 0, 52, 0,  55, 0, 50, 0,  48, 0, 0, 0,
 ];
 
 const minorize = (arr) => arr.map((n) => (n && [4, 9, 11].includes(n % 12) ? n - 1 : n));
 
 const SONGS = {
-  title:        { bpm: 116, melody: FRIENDS_MELODY, bass: FRIENDS_BASS, lead: 'triangle', leadVol: 0.14, bassVol: 0.12, hat: false },
-  farm:         { bpm: 140, melody: FRIENDS_MELODY, bass: FRIENDS_BASS, lead: 'square', leadVol: 0.09, bassVol: 0.14, hat: true },
-  rocket:       { bpm: 126, melody: HAPPY_MELODY, bass: HAPPY_BASS, lead: 'square', leadVol: 0.085, bassVol: 0.13, hat: true, transpose: -2 },
-  dusk:         { bpm: 96, melody: minorize(FRIENDS_MELODY), bass: minorize(FRIENDS_BASS), lead: 'triangle', leadVol: 0.13, bassVol: 0.12, hat: false, transpose: -3 },
-  musicbox:     { bpm: 60, melody: minorize(FRIENDS_MELODY).map((n, i) => (i % 2 ? 0 : n)), bass: null, lead: 'triangle', leadVol: 0.07, transpose: 12, legato: 1.8 },
-  flowey:       { bpm: 130, melody: FLOWEY_MELODY, bass: FLOWEY_BASS, lead: 'square', leadVol: 0.09, bassVol: 0.13, hat: true },
-  napstablook:  { bpm: 68,  melody: SPOOK_MELODY, bass: SPOOK_BASS, lead: 'triangle', leadVol: 0.12, bassVol: 0.11, hat: false, legato: 1.6 },
+  title:       { bpm: 116, melody: FRIENDS_MELODY, bass: FRIENDS_BASS, lead: 'triangle', leadVol: 0.14, bassVol: 0.12, hat: false },
+  farm:        { bpm: 140, melody: FRIENDS_MELODY, bass: FRIENDS_BASS, lead: 'square', leadVol: 0.09, bassVol: 0.14, hat: true },
+  rocket:      { bpm: 126, melody: HAPPY_MELODY, bass: HAPPY_BASS, lead: 'square', leadVol: 0.085, bassVol: 0.13, hat: true, transpose: -2 },
+  dusk:        { bpm: 96, melody: minorize(FRIENDS_MELODY), bass: minorize(FRIENDS_BASS), lead: 'triangle', leadVol: 0.13, bassVol: 0.12, hat: false, transpose: -3 },
+  musicbox:    { bpm: 60, melody: minorize(FRIENDS_MELODY).map((n, i) => (i % 2 ? 0 : n)), bass: null, lead: 'triangle', leadVol: 0.07, transpose: 12, legato: 1.8 },
+  flowey:      { bpm: 112, melody: FLOWEY_MELODY, bass: FLOWEY_BASS, lead: 'square', leadVol: 0.10, bassVol: 0.13, hat: false, legato: 0.6 },
+  napstablook: { bpm: 100, melody: SPOOK_MELODY, bass: SPOOK_BASS, lead: 'triangle', leadVol: 0.14, bassVol: 0.11, hat: false, legato: 1.4 },
 };
 
 const Music = {
@@ -153,18 +155,10 @@ const Music = {
     const tr = (s.transpose || 0) + p.pitch;
     const det = () => p.detune + (p.wobble ? _ar(-p.wobble, p.wobble) : 0);
     const m = s.melody[idx];
-    if (m && !_ach(p.drop)) {
-      AudioSys.tone(midiToFreq(m + tr), stepDur * (s.legato || 0.9),
-        { type: s.lead || 'square', vol: s.leadVol || 0.1, when: t, detune: det(), dest: this.gain });
-    }
+    if (m && !_ach(p.drop)) AudioSys.tone(midiToFreq(m + tr), stepDur * (s.legato || 0.9), { type: s.lead || 'square', vol: s.leadVol || 0.1, when: t, detune: det(), dest: this.gain });
     const b = s.bass && s.bass[idx];
-    if (b && !_ach(p.drop * 0.5)) {
-      AudioSys.tone(midiToFreq(b + tr), stepDur * 1.8,
-        { type: 'triangle', vol: s.bassVol || 0.14, when: t, detune: det(), dest: this.gain });
-    }
-    if (s.hat && idx % 2 === 1 && !_ach(p.drop)) {
-      AudioSys.noise(0.03, { filter: 'highpass', freq: 7000, vol: 0.025, when: t, dest: this.gain });
-    }
+    if (b && !_ach(p.drop * 0.5)) AudioSys.tone(midiToFreq(b + tr), stepDur * 1.8, { type: 'triangle', vol: s.bassVol || 0.14, when: t, detune: det(), dest: this.gain });
+    if (s.hat && idx % 2 === 1 && !_ach(p.drop)) AudioSys.noise(0.03, { filter: 'highpass', freq: 7000, vol: 0.025, when: t, dest: this.gain });
   },
 };
 Music.reset();
@@ -184,53 +178,24 @@ const Sfx = {
       case 'hurt': A.tone(420, 0.22, { slide: 110, vol: 0.12 }); A.noise(0.15, { vol: 0.07, freq: 800 }); break;
       case 'die': A.tone(520, 0.7, { slide: 60, vol: 0.1, type: 'triangle' }); break;
       case 'door': A.noise(0.6, { filter: 'bandpass', freq: 300, freqEnd: 120, q: 4, vol: 0.12 }); A.tone(80, 0.5, { type: 'sawtooth', vol: 0.05 }); break;
-      case 'glitch':
-        for (let i = 0; i < 4; i++) A.tone(_ar(80, 2000), 0.04, { vol: 0.04, when: t + i * 0.03 });
-        A.noise(0.12, { filter: 'highpass', freq: 2500, vol: 0.05 });
-        break;
+      case 'glitch': for (let i = 0; i < 4; i++) A.tone(_ar(80, 2000), 0.04, { vol: 0.04, when: t + i * 0.03 }); A.noise(0.12, { filter: 'highpass', freq: 2500, vol: 0.05 }); break;
       case 'static': A.noise(arg || 0.4, { filter: 'highpass', freq: 1800, vol: 0.05 }); break;
       case 'whisper': A.noise(1.6, { filter: 'bandpass', freq: 900, freqEnd: 1700, q: 7, vol: 0.035, attack: 0.4 }); break;
-      case 'stinger':
-        A.noise(0.8, { filter: 'lowpass', freq: 3000, vol: 0.3 });
-        A.tone(55, 0.9, { type: 'sawtooth', vol: 0.25 }); A.tone(58, 0.9, { type: 'sawtooth', vol: 0.2 });
-        A.tone(1400, 0.5, { type: 'square', vol: 0.06, slide: 900 });
-        break;
+      case 'stinger': A.noise(0.8, { filter: 'lowpass', freq: 3000, vol: 0.3 }); A.tone(55, 0.9, { type: 'sawtooth', vol: 0.25 }); A.tone(58, 0.9, { type: 'sawtooth', vol: 0.2 }); A.tone(1400, 0.5, { type: 'square', vol: 0.06, slide: 900 }); break;
       case 'heartbeat': A.tone(55, 0.12, { type: 'sine', vol: 0.35 }); A.tone(48, 0.14, { type: 'sine', vol: 0.28, when: t + 0.18 }); break;
       case 'vanish': A.tone(900, 0.2, { slide: 120, vol: 0.05, type: 'triangle' }); break;
-      case 'laugh': {
-        const k = arg || 1, n = [4, 7, 12][k - 1] || 4;
-        let when = t;
-        for (let i = 0; i < n; i++) {
-          const f = (k === 3 ? 260 : 330) - i * (k === 3 ? 6 : 4) + _ar(-15, 15);
-          A.tone(f, 0.09, { type: 'square', vol: 0.07 + k * 0.015, when, slide: f * 0.8 });
-          A.noise(0.08, { filter: 'bandpass', freq: 1100, q: 3, vol: 0.05 + k * 0.01, when });
-          when += Math.max(0.09, 0.17 - i * (k === 3 ? 0.006 : 0.004));
-        }
-        if (k === 3) A.tone(46, when - t, { type: 'sawtooth', vol: 0.06 });
-        break;
-      }
+      case 'laugh': { const k = arg || 1, n = [4, 7, 12][k - 1] || 4; let when = t; for (let i = 0; i < n; i++) { const f = (k === 3 ? 260 : 330) - i * (k === 3 ? 6 : 4) + _ar(-15, 15); A.tone(f, 0.09, { type: 'square', vol: 0.07 + k * 0.015, when, slide: f * 0.8 }); A.noise(0.08, { filter: 'bandpass', freq: 1100, q: 3, vol: 0.05 + k * 0.01, when }); when += Math.max(0.09, 0.17 - i * (k === 3 ? 0.006 : 0.004)); } if (k === 3) A.tone(46, when - t, { type: 'sawtooth', vol: 0.06 }); break; }
       case 'crack': A.noise(0.12, { filter: 'highpass', freq: 3000, vol: 0.2 }); A.noise(0.25, { filter: 'bandpass', freq: 1400, q: 2, vol: 0.12, when: t + 0.05 }); A.tone(160, 0.15, { slide: 60, vol: 0.12, type: 'triangle' }); break;
       case 'thud': A.tone(70, 0.25, { type: 'sine', vol: 0.35, slide: 40 }); A.noise(0.15, { filter: 'lowpass', freq: 400, vol: 0.12 }); break;
       case 'clank': A.tone(1200 + _ar(-200, 200), 0.08, { type: 'square', vol: 0.06 }); A.noise(0.06, { filter: 'highpass', freq: 4000, vol: 0.06 }); break;
       case 'beep': A.tone(arg || 880, 0.18, { type: 'square', vol: 0.08 }); break;
       case 'rumble': A.noise(arg || 3, { filter: 'lowpass', freq: 220, vol: 0.18, attack: 0.4 }); A.tone(48, arg || 3, { type: 'sawtooth', vol: 0.06 }); break;
       case 'sputter': for (let i = 0; i < 5; i++) A.noise(0.07, { filter: 'bandpass', freq: 600, vol: 0.12, when: t + i * 0.13 + _ar(0, 0.05) }); break;
-      case 'boom':
-        A.noise(1.6, { filter: 'lowpass', freq: 900, freqEnd: 80, vol: 0.45 });
-        A.tone(60, 1.2, { type: 'sawtooth', vol: 0.25, slide: 30 });
-        A.noise(0.3, { filter: 'highpass', freq: 2000, vol: 0.2 });
-        break;
+      case 'boom': A.noise(1.6, { filter: 'lowpass', freq: 900, freqEnd: 80, vol: 0.45 }); A.tone(60, 1.2, { type: 'sawtooth', vol: 0.25, slide: 30 }); A.noise(0.3, { filter: 'highpass', freq: 2000, vol: 0.2 }); break;
       case 'goo': A.tone(_ar(90, 160), 0.18, { type: 'sine', vol: 0.12, slide: _ar(200, 320) }); A.noise(0.2, { filter: 'lowpass', freq: 300, vol: 0.06 }); break;
       case 'pickup': A.tone(784, 0.06, { vol: 0.08 }); A.tone(1047, 0.1, { vol: 0.08, when: t + 0.06 }); break;
       case 'heart_pick': A.tone(660, 0.08, { vol: 0.1 }); A.tone(990, 0.12, { vol: 0.1, when: t + 0.08 }); A.tone(1318, 0.15, { vol: 0.09, when: t + 0.18 }); break;
-      case 'flowey_laugh': {
-        let when = t;
-        for (let i = 0; i < 8; i++) {
-          A.tone(440 + _ar(-30, 30), 0.06, { type: 'square', vol: 0.08, when, slide: 300 });
-          when += 0.08;
-        }
-        break;
-      }
+      case 'flowey_laugh': { let when = t; for (let i = 0; i < 8; i++) { A.tone(440 + _ar(-30, 30), 0.06, { type: 'square', vol: 0.08, when, slide: 300 }); when += 0.08; } break; }
     }
   },
 };
