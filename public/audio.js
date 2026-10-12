@@ -1,14 +1,5 @@
 /* =====================================================================
-   ÁUDIO — tudo sintetizado com WebAudio (nenhum arquivo necessário).
-   ---------------------------------------------------------------------
-   SONGS: as músicas (notas MIDI, 0 = pausa). Edite à vontade.
-   Music.set({...}) distorce a música ao vivo:
-     wobble  → desafinação aleatória (cents)
-     detune  → desafinação fixa (cents)
-     drop    → chance de "faltar" nota (0–1)
-     reverse → toca a melodia de trás pra frente
-     rate    → velocidade (1 = normal)
-     pitch   → transposição em semitons
+   ÁUDIO — tudo sintetizado com WebAudio
    ===================================================================== */
 
 const _ar = (a, b) => a + Math.random() * (b - a);
@@ -32,12 +23,8 @@ const AudioSys = {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     return true;
   },
-  unlock() {
-    if (this.init() && this.ctx.state === 'suspended') this.ctx.resume();
-  },
+  unlock() { if (this.init() && this.ctx.state === 'suspended') this.ctx.resume(); },
   get now() { return this.ctx ? this.ctx.currentTime : 0; },
-
-  // Um "bip" com envelope.
   tone(freq, dur, o = {}) {
     if (!this.ctx) return;
     const c = this.ctx, t = o.when != null ? o.when : c.currentTime;
@@ -53,8 +40,6 @@ const AudioSys = {
     osc.connect(g); g.connect(o.dest || this.sfxBus);
     osc.start(t); osc.stop(t + dur + 0.05);
   },
-
-  // Ruído filtrado (estática, sussurros, passos...).
   noise(dur, o = {}) {
     if (!this.ctx) return;
     const c = this.ctx, t = o.when != null ? o.when : c.currentTime;
@@ -72,7 +57,7 @@ const AudioSys = {
   },
 };
 
-// ---------- MÚSICAS ----------
+// ===== MELODIAS =====
 const HAPPY_MELODY = [
   72, 76, 79, 76,  77, 76, 74, 0,  71, 74, 77, 74,  76, 74, 72, 0,
   72, 76, 79, 84,  81, 79, 77, 76, 74, 77, 76, 74,  72, 0, 72, 0,
@@ -81,10 +66,6 @@ const HAPPY_BASS = [
   48, 0, 55, 0,  53, 0, 55, 0,  55, 0, 50, 0,  48, 0, 55, 0,
   48, 0, 52, 0,  53, 0, 57, 0,  55, 0, 55, 0,  48, 0, 48, 0,
 ];
-// Transforma a melodia em "menor" (mais triste).
-const minorize = (arr) => arr.map((n) => (n && [4, 9, 11].includes(n % 12) ? n - 1 : n));
-
-// Tema da sequência: "Stick e Seus Amigos"
 const FRIENDS_MELODY = [
   67, 0, 72, 74,  76, 74, 72, 0,  69, 72, 74, 0,  72, 0, 67, 0,
   65, 69, 72, 74, 76, 77, 76, 74, 72, 71, 72, 74, 72, 0, 0, 0,
@@ -94,12 +75,36 @@ const FRIENDS_BASS = [
   53, 0, 57, 0,  48, 0, 52, 0,  55, 0, 50, 0,  48, 0, 48, 0,
 ];
 
+// ===== FLOWEY — "Your Best Friend" (Undertale) — alegre e travesso =====
+const FLOWEY_MELODY = [
+  78, 78, 78, 78,  82, 80, 78, 75,  78, 0, 78, 78,  75, 0, 78, 0,
+  78, 78, 78, 78,  82, 80, 78, 75,  78, 0, 78, 78,  75, 0, 0, 0,
+];
+const FLOWEY_BASS = [
+  54, 0, 54, 0,  58, 0, 54, 0,  54, 0, 51, 0,  54, 0, 54, 0,
+  54, 0, 54, 0,  58, 0, 54, 0,  54, 0, 51, 0,  54, 0, 54, 0,
+];
+
+// ===== NAPSTABLOOK — "Spooktune" (Undertale) — assombrado, lento, triste =====
+const SPOOK_MELODY = [
+  69, 0, 72, 74,  72, 0, 69, 0,  67, 0, 69, 71,  69, 0, 67, 0,
+  65, 0, 67, 69,  67, 0, 65, 0,  64, 0, 65, 67,  65, 0, 0, 0,
+];
+const SPOOK_BASS = [
+  45, 0, 45, 0,  45, 0, 45, 0,  43, 0, 43, 0,  43, 0, 43, 0,
+  41, 0, 41, 0,  41, 0, 41, 0,  40, 0, 40, 0,  40, 0, 40, 0,
+];
+
+const minorize = (arr) => arr.map((n) => (n && [4, 9, 11].includes(n % 12) ? n - 1 : n));
+
 const SONGS = {
-  title:   { bpm: 116, melody: FRIENDS_MELODY, bass: FRIENDS_BASS, lead: 'triangle', leadVol: 0.14, bassVol: 0.12, hat: false },
-  farm:    { bpm: 140, melody: FRIENDS_MELODY, bass: FRIENDS_BASS, lead: 'square', leadVol: 0.09, bassVol: 0.14, hat: true },
-  rocket:  { bpm: 126, melody: HAPPY_MELODY, bass: HAPPY_BASS, lead: 'square', leadVol: 0.085, bassVol: 0.13, hat: true, transpose: -2 },
-  dusk:    { bpm: 96, melody: minorize(FRIENDS_MELODY), bass: minorize(FRIENDS_BASS), lead: 'triangle', leadVol: 0.13, bassVol: 0.12, hat: false, transpose: -3 },
-  musicbox:{ bpm: 60, melody: minorize(FRIENDS_MELODY).map((n, i) => (i % 2 ? 0 : n)), bass: null, lead: 'triangle', leadVol: 0.07, transpose: 12, legato: 1.8 },
+  title:        { bpm: 116, melody: FRIENDS_MELODY, bass: FRIENDS_BASS, lead: 'triangle', leadVol: 0.14, bassVol: 0.12, hat: false },
+  farm:         { bpm: 140, melody: FRIENDS_MELODY, bass: FRIENDS_BASS, lead: 'square', leadVol: 0.09, bassVol: 0.14, hat: true },
+  rocket:       { bpm: 126, melody: HAPPY_MELODY, bass: HAPPY_BASS, lead: 'square', leadVol: 0.085, bassVol: 0.13, hat: true, transpose: -2 },
+  dusk:         { bpm: 96, melody: minorize(FRIENDS_MELODY), bass: minorize(FRIENDS_BASS), lead: 'triangle', leadVol: 0.13, bassVol: 0.12, hat: false, transpose: -3 },
+  musicbox:     { bpm: 60, melody: minorize(FRIENDS_MELODY).map((n, i) => (i % 2 ? 0 : n)), bass: null, lead: 'triangle', leadVol: 0.07, transpose: 12, legato: 1.8 },
+  flowey:       { bpm: 130, melody: FLOWEY_MELODY, bass: FLOWEY_BASS, lead: 'square', leadVol: 0.09, bassVol: 0.13, hat: true },
+  napstablook:  { bpm: 68,  melody: SPOOK_MELODY, bass: SPOOK_BASS, lead: 'triangle', leadVol: 0.12, bassVol: 0.11, hat: false, legato: 1.6 },
 };
 
 const Music = {
@@ -164,7 +169,6 @@ const Music = {
 };
 Music.reset();
 
-// ---------- EFEITOS SONOROS ----------
 const Sfx = {
   play(name, arg) {
     if (!AudioSys.ctx) return;
@@ -193,8 +197,7 @@ const Sfx = {
         break;
       case 'heartbeat': A.tone(55, 0.12, { type: 'sine', vol: 0.35 }); A.tone(48, 0.14, { type: 'sine', vol: 0.28, when: t + 0.18 }); break;
       case 'vanish': A.tone(900, 0.2, { slide: 120, vol: 0.05, type: 'triangle' }); break;
-      // ---- sequência ----
-      case 'laugh': { // arg = intensidade 1, 2 ou 3
+      case 'laugh': {
         const k = arg || 1, n = [4, 7, 12][k - 1] || 4;
         let when = t;
         for (let i = 0; i < n; i++) {
@@ -219,11 +222,19 @@ const Sfx = {
         break;
       case 'goo': A.tone(_ar(90, 160), 0.18, { type: 'sine', vol: 0.12, slide: _ar(200, 320) }); A.noise(0.2, { filter: 'lowpass', freq: 300, vol: 0.06 }); break;
       case 'pickup': A.tone(784, 0.06, { vol: 0.08 }); A.tone(1047, 0.1, { vol: 0.08, when: t + 0.06 }); break;
+      case 'heart_pick': A.tone(660, 0.08, { vol: 0.1 }); A.tone(990, 0.12, { vol: 0.1, when: t + 0.08 }); A.tone(1318, 0.15, { vol: 0.09, when: t + 0.18 }); break;
+      case 'flowey_laugh': {
+        let when = t;
+        for (let i = 0; i < 8; i++) {
+          A.tone(440 + _ar(-30, 30), 0.06, { type: 'square', vol: 0.08, when, slide: 300 });
+          when += 0.08;
+        }
+        break;
+      }
     }
   },
 };
 
-// ---------- AMBIENTE (zumbido grave, batimentos) ----------
 const Ambient = {
   drone: null, hbRate: 0, hbNext: 0,
   droneOn(vol = 0.05) {
