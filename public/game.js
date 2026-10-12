@@ -55,7 +55,37 @@
   });
   window.addEventListener('keyup', (e) => Input.release(e.code));
   window.addEventListener('blur', () => { Input.down = {}; });
-  canvas.addEventListener('pointerdown', () => { Input.pressed.Tap = true; Input.any = true; AudioSys.unlock(); });
+
+  // ===== POINTERDOWN (com escolhas) =====
+  canvas.addEventListener('pointerdown', (e) => {
+    Input.pressed.Tap = true; Input.any = true; AudioSys.unlock();
+    const d = G.dialog;
+    if (d && d.choiceActive && d.choices) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = (e.clientX - rect.left) * (W / rect.width);
+      const cy = (e.clientY - rect.top) * (H / rect.height);
+      const cw = 220, chh = 20;
+      const ccx = (W - cw) / 2;
+      const startY = 30;
+      for (let i = 0; i < d.choices.length; i++) {
+        const ccy = startY + i * (chh + 8);
+        if (cx >= ccx && cx <= ccx + cw && cy >= ccy && cy <= ccy + chh) {
+          d.choiceIdx = i;
+          const ch = d.choices[i];
+          const onEnd = d.onEnd;
+          d.choiceActive = false;
+          d.choices = null;
+          G.dialog = null;
+          Sfx.play('heart_pick');
+          if (ch.onSelect) ch.onSelect(api);
+          if (onEnd) onEnd(api);
+          Input.pressed.Tap = false;
+          return;
+        }
+      }
+    }
+  });
+
   document.querySelectorAll('[data-key]').forEach((el) => {
     const code = el.getAttribute('data-key');
     const on = (e) => { e.preventDefault(); Input.press(code); };
@@ -507,11 +537,33 @@
   }
 
   function openDialog(name, lines, onEnd, o) {
-    G.dialog = Object.assign({ name, lines, i: 0, shown: 0, onEnd, lastChar: 0 }, o || {});
+    G.dialog = Object.assign({
+      name, lines, i: 0, shown: 0, onEnd, lastChar: 0,
+      choices: null,
+      choiceIdx: 0,
+      choiceActive: false,
+    }, o || {});
   }
 
   function updateDialog(dt) {
     const d = G.dialog, line = d.lines[d.i];
+
+    if (d.choiceActive) {
+      if (Input.hit('left')) { d.choiceIdx = Math.max(0, d.choiceIdx - 1); Sfx.play('select'); }
+      if (Input.hit('right')) { d.choiceIdx = Math.min(d.choices.length - 1, d.choiceIdx + 1); Sfx.play('select'); }
+      if (Input.hit('interact') || Input.confirm()) {
+        const ch = d.choices[d.choiceIdx];
+        d.choiceActive = false;
+        d.choices = null;
+        const cb = ch.onSelect;
+        G.dialog = null;
+        Sfx.play('heart_pick');
+        if (cb) cb(api);
+        if (d.onEnd) d.onEnd(api);
+      }
+      return;
+    }
+
     if (d.shown < line.length) {
       d.shown = Math.min(line.length, d.shown + CONFIG.TEXT_SPEED * dt);
       const n = Math.floor(d.shown);
@@ -521,6 +573,10 @@
     if (Input.confirm()) {
       if (d.shown < line.length) d.shown = line.length;
       else if (d.i < d.lines.length - 1) { d.i++; d.shown = 0; }
+      else if (d.choices && d.choices.length) {
+        d.choiceActive = true;
+        d.choiceIdx = 0;
+      }
       else { G.dialog = null; if (d.onEnd) d.onEnd(api); }
     }
   }
@@ -711,7 +767,12 @@
       openDialog(o.name, o.lines, () => {
         if (o.onEnd) o.onEnd(api);
         if (o.mode === 'ghost') { o.fading = true; Sfx.play('vanish'); }
-      }, { upside: o.mode === 'upside', color: o.mode === 'ghost' ? '#6d7280' : o.color, pitch: o.mode === 'ghost' ? 260 : 560 });
+      }, {
+        upside: o.mode === 'upside',
+        color: o.mode === 'ghost' ? '#6d7280' : o.color,
+        pitch: o.mode === 'ghost' ? 260 : 560,
+        choices: o.choices || null,
+      });
     } else if (tg.kind === 'sign') {
       openDialog(null, o.lines);
     } else if (tg.kind === 'door') {
@@ -1522,12 +1583,33 @@
       left -= l.length + 1;
       txt(ctx, part, bxX + 10, bxY + 12 + i * 12, { align: 'left', color: ink, shadow: false });
     });
-    if (d.shown >= line.length && Math.floor(G.t * 3) % 2 === 0) {
+    if (!d.choiceActive && d.shown >= line.length && Math.floor(G.t * 3) % 2 === 0) {
       ctx.fillStyle = ink;
       const ax = bxX + bw - 14, ay = bxY + bh - 11;
       ctx.fillRect(ax, ay, 5, 1); ctx.fillRect(ax + 1, ay + 1, 3, 1); ctx.fillRect(ax + 2, ay + 2, 1, 1);
     }
     ctx.restore();
+
+    if (d.choiceActive && d.choices) {
+      const cw = 220, chh = 20;
+      const cx = (W - cw) / 2;
+      const startY = 30;
+      for (let i = 0; i < d.choices.length; i++) {
+        const cy = startY + i * (chh + 8);
+        const sel = i === d.choiceIdx;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(cx - 1, cy - 1, cw + 2, chh + 2);
+        ctx.fillStyle = sel ? '#fff8ec' : '#141018';
+        ctx.fillRect(cx, cy, cw, chh);
+        ctx.strokeStyle = sel ? '#ffd84a' : '#3a3a4a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cx + 0.5, cy + 0.5, cw - 1, chh - 1);
+        const prefix = sel ? '♥ ' : '  ';
+        txt(ctx, prefix + d.choices[i].text, cx + 8, cy + chh / 2 + 1, {
+          align: 'left', color: sel ? '#2a1a14' : '#8a8a9a', shadow: false, size: 8,
+        });
+      }
+    }
   }
 
   function drawHud(ctx) {
