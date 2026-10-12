@@ -3,7 +3,7 @@
   const $ = (t, p) => { const e = document.createElement(t); if (p) for (const k in p) e.setAttribute(k, p[k]); return e; };
 
   const NICK_MAX = 24;
-  const ADMIN_NICK = 'SeversPrevadeFedora'; // só esse nick vê o painel
+  const ADMIN_NICK = 'DeRaminWrick';
 
   const DEFAULT_AVATAR = {
     skin: '#ffffff', hair: 'RAINBOW', shirt: '#8b5a2b',
@@ -22,13 +22,13 @@
     nick: null, isAdmin: false, mode: null,
     roomId: null, room: null, lastV: -1,
     avatars: {}, entities: {}, avatar: { ...DEFAULT_AVATAR },
-    turnEl: null, chatBar: null, liveEl: null, liveSig: null,
-    started: false,
+    started: false, menuOpen: false, chatMin: false,
   };
 
-  // ===== CSS =====
+  // ============ CSS ============
   const s = document.createElement('style');
   s.textContent = `
+    /* ---------- modais (login/salas/avatar) ---------- */
     #mpo{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
       background:rgba(4,2,8,.97);z-index:2147483000;font-family:monospace;color:#eee;
       overflow-y:auto;padding:20px;box-sizing:border-box}
@@ -43,7 +43,7 @@
       border:none;border-radius:8px;font-family:inherit;font-size:12px;cursor:pointer;font-weight:bold}
     #mpo button:hover{background:#a04ef0}
     #mpo button.sec{background:#333}#mpo button.sec:hover{background:#444}
-    #mpo button.studio{background:#4ac24a;color:#0a1a0a}#mpo button.studio:hover{background:#5ce05c}
+    #mpo button.studio{background:#4ac24a;color:#0a1a0a}
     #mpo .err{color:#ff5570;font-size:12px;text-align:center;min-height:16px;margin-top:6px}
     #mpo .room{background:#0d0a12;border:1px solid #4a2a6a;border-radius:8px;padding:8px;margin:5px 0;
       cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:6px}
@@ -54,7 +54,8 @@
     #mpo .room .cnt{background:#8a2be2;color:#fff;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:bold}
     #mpo .room .cnt.full{background:#c0203a}
     #mpo .room .live{color:#ff3347;font-weight:bold}
-    .avPrev{width:100%;height:100px;display:flex;align-items:center;justify-content:center;background:#0d0a12;border-radius:10px;margin-bottom:10px}
+    .avPrev{width:100%;height:100px;display:flex;align-items:center;justify-content:center;
+      background:#0d0a12;border-radius:10px;margin-bottom:10px}
     .avPrev canvas{image-rendering:pixelated;width:72px;height:96px}
     .avRow{display:flex;align-items:center;gap:8px;margin:6px 0}
     .avRow>span{font-size:11px;color:#b0a8c0;width:60px;text-align:right;flex-shrink:0}
@@ -62,72 +63,96 @@
     .avRow .sw button{width:22px;height:22px;padding:0;margin:0;border-radius:4px;border:2px solid #333;cursor:pointer;background:#000}
     .avRow .sw button.sel{border-color:#b8ff2e;box-shadow:0 0 6px #b8ff2e}
     .avRow .sw button[data-c="RAINBOW"]{background:linear-gradient(90deg,#ff0000,#ffcc00,#00ff00,#00d4ff,#8a2be2,#ff0000)}
-    #mpHud{position:fixed;top:8px;left:8px;background:rgba(10,8,15,.86);border:1px solid #4a2a6a;
-      border-radius:8px;padding:6px 10px;font-family:monospace;font-size:11px;color:#fff;
-      z-index:999998;line-height:1.45;max-width:60vw}
-    #mpHud .adm{color:#ffd84a}#mpHud .turn{color:#b8ff2e}#mpHud .me{color:#ff6a9c}
-    #mpChat{position:fixed;left:8px;bottom:88px;width:min(76vw,340px);max-height:180px;overflow-y:auto;
-      background:rgba(10,8,15,.9);border:1px solid #4a2a6a;border-radius:10px;padding:6px;
-      font-family:monospace;font-size:11px;color:#ddd;z-index:999998}
-    #mpChat .m{margin:3px 0;word-wrap:break-word}#mpChat .me{color:#b8ff2e}
-    #mpChat .sys{color:#8a8a9a;font-style:italic}#mpChat .ent{color:#ff6a9c;text-shadow:0 0 5px #ff006a}
-    #mpIn{position:fixed;left:8px;bottom:58px;width:min(76vw,340px);display:flex;gap:4px;z-index:999998}
-    #mpIn input{flex:1;padding:8px;background:rgba(10,8,15,.92);color:#fff;border:1px solid #4a2a6a;
-      border-radius:8px;font-family:monospace;font-size:12px;min-width:0}
-    #mpIn button{padding:8px 12px;background:#8a2be2;color:#fff;border:none;border-radius:8px;
-      font-family:monospace;font-weight:bold;cursor:pointer;width:auto;flex-shrink:0}
+
+    /* ---------- HUD (topo esquerdo, compacto) ---------- */
+    #mpHud{position:fixed;top:6px;left:6px;background:rgba(10,8,15,.82);
+      border:1px solid #4a2a6a;border-radius:6px;padding:4px 8px;
+      font-family:monospace;font-size:10px;color:#ccc;z-index:999996;line-height:1.3;pointer-events:none}
+    #mpHud b{color:#b8ff2e}
+    #mpHud .adm{color:#ffd84a}
+    #mpHud .turn{color:#b8ff2e;font-weight:bold}
+
+    /* ---------- botão menu (topo direito) ---------- */
+    #mpMenuBtn{position:fixed;top:6px;right:6px;width:36px;height:36px;
+      background:rgba(20,16,26,.92);color:#fff;border:2px solid #508cff;border-radius:8px;
+      font-size:18px;cursor:pointer;z-index:999997;display:flex;align-items:center;justify-content:center}
+    #mpMenuBtn:active{background:#508cff;color:#000}
+
+    /* ---------- menu dropdown ---------- */
+    #mpMenu{position:fixed;top:48px;right:6px;background:rgba(20,16,26,.98);
+      border:2px solid #508cff;border-radius:10px;padding:6px;z-index:999997;
+      width:180px;box-shadow:0 4px 20px rgba(0,0,0,.6);display:none;flex-direction:column;gap:4px}
+    #mpMenu.open{display:flex}
+    #mpMenu button{width:100%;padding:8px 10px;background:#1e1e2a;color:#fff;border:1px solid #3a3a4a;
+      border-radius:6px;font-family:monospace;font-size:11px;font-weight:bold;cursor:pointer;text-align:left}
+    #mpMenu button:active{background:#508cff;color:#000}
+    #mpMenu button.danger{background:#402030;border-color:#803040}
+    #mpMenu button.admin{background:#4a3a10;border-color:#a08020;color:#ffd84a}
+
+    /* ---------- chat (embaixo esquerdo, minimizável) ---------- */
+    #mpChat{position:fixed;left:6px;bottom:80px;width:min(60vw,280px);max-height:150px;
+      overflow-y:auto;background:rgba(10,8,15,.9);border:1px solid #4a2a6a;border-radius:8px;
+      padding:5px 7px;font-family:monospace;font-size:10px;color:#ccc;z-index:999996;
+      transition:max-height .2s, padding .2s}
+    #mpChat.min{max-height:20px;padding:3px 7px;overflow:hidden}
+    #mpChat .m{margin:2px 0;word-wrap:break-word;line-height:1.3}
+    #mpChat .me{color:#b8ff2e}
+    #mpChat .sys{color:#8a8a9a;font-style:italic}
+    #mpChat .ent{color:#ff6a9c;text-shadow:0 0 4px #ff006a}
+
+    #mpIn{position:fixed;left:6px;bottom:52px;width:min(60vw,280px);display:flex;gap:3px;z-index:999996}
+    #mpIn input{flex:1;padding:6px 8px;background:rgba(10,8,15,.92);color:#fff;
+      border:1px solid #4a2a6a;border-radius:6px;font-family:monospace;font-size:11px;min-width:0}
+    #mpIn button{padding:6px 10px;background:#8a2be2;color:#fff;border:none;border-radius:6px;
+      font-family:monospace;font-weight:bold;cursor:pointer;width:auto;flex-shrink:0;font-size:11px}
+    #mpIn.hidden{display:none}
+
+    /* ---------- painel admin ---------- */
+    #mpAdm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:min(92vw,400px);max-height:80vh;overflow-y:auto;background:#14101a;
+      border:2px solid #ffd84a;border-radius:12px;padding:14px;color:#eee;
+      font-family:monospace;font-size:12px;z-index:2147483001}
+    #mpAdm h2{margin:0 0 10px;color:#ffd84a;font-size:13px;text-align:center}
+    #mpAdm h3{margin:12px 0 6px;color:#b8ff2e;font-size:11px;border-bottom:1px solid #333;padding-bottom:3px}
+    #mpAdm input,#mpAdm select{width:100%;padding:6px;margin:3px 0;background:#0d0a12;color:#fff;
+      border:1px solid #4a2a6a;border-radius:6px;box-sizing:border-box;font-family:inherit;font-size:11px}
+    #mpAdm button{width:100%;padding:7px;margin:3px 0;background:#8a2be2;color:#fff;border:none;
+      border-radius:6px;cursor:pointer;font-weight:bold;font-family:inherit;font-size:11px}
+    #mpAdm .x{position:absolute;top:8px;right:12px;width:auto;padding:3px 10px;background:#402030}
+    #mpAdm .row{display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center;margin:3px 0}
+    #mpAdm .st{color:#0f0;font-size:10px;min-height:14px;text-align:center;margin-top:6px}
+
+    /* ---------- avatares e entidades no mundo ---------- */
     .mpAv{position:fixed;transform:translate(-50%,-100%);text-align:center;font-family:monospace;
-      font-size:10px;font-weight:bold;color:#fff;text-shadow:0 0 4px #000,0 0 4px #000;z-index:999997;pointer-events:none}
-    .mpAv .body{width:18px;height:22px;margin:0 auto 2px;border-radius:4px;position:relative;
-      border:1px solid #000;box-shadow:0 0 6px rgba(255,255,255,.35)}
-    .mpAv .head{position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;border:1px solid #000}
+      font-size:9px;font-weight:bold;color:#fff;text-shadow:0 0 4px #000,0 0 4px #000;
+      z-index:999995;pointer-events:none}
+    .mpAv .body{width:16px;height:20px;margin:0 auto 2px;border-radius:4px;position:relative;
+      border:1px solid #000;box-shadow:0 0 5px rgba(255,255,255,.35)}
+    .mpAv .head{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:9px;height:9px;
+      border-radius:50%;border:1px solid #000}
     .mpAv .eye{position:absolute;top:3px;width:2px;height:2px;border-radius:50%}
     .mpAv .eye.l{left:2px}.mpAv .eye.r{right:2px}
+
     .mpEnt{position:fixed;transform:translate(-50%,-100%);text-align:center;font-family:monospace;
-      font-size:10px;font-weight:bold;color:#ff6a9c;text-shadow:0 0 6px #ff006a;z-index:999997;cursor:pointer;user-select:none}
-    .mpEnt .blob{width:34px;height:34px;border-radius:50%;
-      background:radial-gradient(circle at 40% 35%, #2a0f3a, #050208 70%);border:2px solid #3a1f4a;
-      margin:0 auto 2px;animation:mpB 2s ease-in-out infinite}
+      font-size:9px;font-weight:bold;color:#ff6a9c;text-shadow:0 0 5px #ff006a;
+      z-index:999995;cursor:pointer;user-select:none}
+    .mpEnt .blob{width:30px;height:30px;border-radius:50%;
+      background:radial-gradient(circle at 40% 35%, #2a0f3a, #050208 70%);
+      border:2px solid #3a1f4a;margin:0 auto 2px;animation:mpB 2s ease-in-out infinite}
     .mpEnt.eye .blob{background:radial-gradient(circle at 50% 50%, #ff3347 8%, #1a0508 70%)}
     .mpEnt.shadow .blob{background:#0a0508;border-color:#000}
     @keyframes mpB{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-    #mpAdmBtn{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:#ffd84a;
-      color:#1a1a1a;border:none;padding:6px 14px;border-radius:8px;font-family:monospace;
-      font-weight:bold;cursor:pointer;z-index:999999;font-size:12px}
-    #mpAvBtn{position:fixed;top:8px;left:calc(50% + 100px);background:#8a2be2;color:#fff;
-      border:none;padding:6px 12px;border-radius:8px;font-family:monospace;font-weight:bold;
-      cursor:pointer;z-index:999999;font-size:12px}
-    #mpAdm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(94vw,420px);
-      max-height:86vh;overflow-y:auto;background:#14101a;border:2px solid #ffd84a;border-radius:12px;
-      padding:14px;color:#eee;font-family:monospace;font-size:12px;z-index:2147483001}
-    #mpAdm h2{margin:0 0 10px;color:#ffd84a;font-size:14px;text-align:center}
-    #mpAdm h3{margin:12px 0 6px;color:#b8ff2e;font-size:12px;border-bottom:1px solid #333;padding-bottom:3px}
-    #mpAdm input,#mpAdm select{width:100%;padding:7px;margin:3px 0;background:#0d0a12;color:#fff;
-      border:1px solid #4a2a6a;border-radius:6px;box-sizing:border-box;font-family:inherit;font-size:12px}
-    #mpAdm button{width:100%;padding:8px;margin:3px 0;background:#8a2be2;color:#fff;border:none;
-      border-radius:6px;cursor:pointer;font-weight:bold;font-family:inherit;font-size:12px}
-    #mpAdm .x{position:absolute;top:8px;right:12px;width:auto;padding:3px 10px;background:#402030}
-    #mpAdm .row{display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center;margin:3px 0}
-    #mpAdm .st{color:#0f0;font-size:11px;min-height:14px;text-align:center;margin-top:6px}
+
+    /* ---------- jumpscare ---------- */
     #mpJump{position:fixed;inset:0;background:#000;z-index:2147483647;display:flex;
       align-items:center;justify-content:center;color:#ff2030;font-family:monospace;
-      font-size:90px;font-weight:bold;pointer-events:none;animation:mpJ .45s ease-out;text-shadow:0 0 50px #ff2030}
+      font-size:90px;font-weight:bold;pointer-events:none;animation:mpJ .45s ease-out;
+      text-shadow:0 0 50px #ff2030}
     @keyframes mpJ{0%{opacity:0;transform:scale(.5)}30%{opacity:1;transform:scale(1.2)}100%{opacity:0;transform:scale(1)}}
-    #mpLive{position:fixed;bottom:8px;right:8px;width:min(50vw,360px);aspect-ratio:16/9;background:#000;
-      border:2px solid #ff3347;border-radius:10px;z-index:999997;overflow:hidden;
-      box-shadow:0 0 20px rgba(255,51,71,.5)}
-    #mpLive iframe{width:100%;height:100%;border:0;display:block}
-    #mpLive .tag{position:absolute;top:4px;left:4px;background:#ff3347;color:#fff;font-family:monospace;
-      font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;z-index:1}
-    #mpLive .min{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;
-      font-family:monospace;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;z-index:1;
-      width:auto;font-weight:bold}
-    #mpLive.minimized{aspect-ratio:auto;height:28px;width:110px}
-    #mpLive.minimized iframe{display:none}
   `;
   document.head.appendChild(s);
 
-  // ===== HWID =====
+  // ============ HWID ============
   async function getHWID() {
     let id = localStorage.getItem('wrick_hwid');
     if (id) return id;
@@ -165,7 +190,7 @@
   }
   const getState = async () => (await fetch('/api/game')).json();
 
-  // ===== AVATAR =====
+  // ============ AVATAR ============
   function loadAvatar() {
     try {
       const raw = localStorage.getItem('wrick_avatar');
@@ -239,7 +264,7 @@
 
   function closeAll() { document.querySelectorAll('#mpo').forEach(x => x.remove()); }
 
-  // ===== TELA LOGIN =====
+  // ============ LOGIN ============
   function loginScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -260,8 +285,8 @@
     const tentar = () => {
       const nick = inp.value.trim();
       if (!nick || nick.length < 2) { err.textContent = '⚠ nick muito curto'; return; }
-      if (nick.length > NICK_MAX) { err.textContent = '⚠ nick muito longo (máx ' + NICK_MAX + ')'; return; }
-      if (!/^[\wÀ-ÿ\-_. ]{2,24}$/.test(nick)) { err.textContent = '⚠ só letras, números, _ - . e espaço'; return; }
+      if (nick.length > NICK_MAX) { err.textContent = '⚠ nick muito longo'; return; }
+      if (!/^[\wÀ-ÿ\-_. ]{2,24}$/.test(nick)) { err.textContent = '⚠ inválido'; return; }
       MP.nick = nick;
       try { localStorage.setItem('wrick_nick', nick); } catch (e) {}
       closeAll();
@@ -271,7 +296,7 @@
     inp.onkeydown = e => { if (e.key === 'Enter') tentar(); };
   }
 
-  // ===== TELA AVATAR =====
+  // ============ AVATAR ============
   function avatarScreen(back) {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -314,15 +339,15 @@
     o.querySelector('#avReset').onclick = () => { MP.avatar = { ...DEFAULT_AVATAR }; saveAvatar(); renderSw(); renderPrev(); };
   }
 
-  // ===== TELA SALAS =====
+  // ============ LOBBY ============
   async function lobbyScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
     o.innerHTML = `
       <div class="c">
         <h1>SALAS</h1>
-        <p>olá, ${MP.nick} · <span id="mpoAvA" style="color:#8a2be2;cursor:pointer;text-decoration:underline">🎨 trocar avatar</span></p>
-        <button id="mpoStudio" class="studio">🛠 ABRIR STUDIO (criar mapas)</button>
+        <p>olá, ${MP.nick} · <span id="mpoAvA" style="color:#8a2be2;cursor:pointer;text-decoration:underline">🎨 avatar</span></p>
+        <button id="mpoStudio" class="studio">🛠 ABRIR STUDIO</button>
         <button id="mpoCreate">➕ CRIAR NOVA SALA</button>
         <button id="mpoRefresh" class="sec">🔄 Atualizar lista</button>
         <div id="mpoList" style="margin-top:8px"><p>carregando...</p></div>
@@ -341,8 +366,8 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'listRooms' }),
         }).then(x => x.json());
-        if (!r.ok) { listBox.innerHTML = '<p>erro ao carregar</p>'; return; }
-        if (!r.rooms.length) { listBox.innerHTML = '<p>nenhuma sala aberta. cria a primeira!</p>'; return; }
+        if (!r.ok) { listBox.innerHTML = '<p>erro</p>'; return; }
+        if (!r.rooms.length) { listBox.innerHTML = '<p>nenhuma sala aberta</p>'; return; }
         listBox.innerHTML = '';
         r.rooms.forEach(room => {
           const el = $('div', { class: 'room' });
@@ -354,24 +379,20 @@
               <div class="meta">código: <b>${room.id}</b></div>
             </div>
             <div class="cnt ${full ? 'full' : ''}">${room.players}/${room.maxPlayers}</div>`;
-          el.onclick = () => {
-            if (full) { err.textContent = '⚠ sala lotada'; return; }
-            joinRoom(room.id);
-          };
+          el.onclick = () => { if (full) { err.textContent = '⚠ sala lotada'; return; } joinRoom(room.id); };
           listBox.appendChild(el);
         });
       } catch (e) { listBox.innerHTML = '<p>erro de rede</p>'; }
     }
 
     async function joinRoom(roomId) {
-      err.textContent = 'entrando em ' + roomId + '...';
+      err.textContent = 'entrando...';
       const r = await api('joinRoom', { roomId, avatar: MP.avatar });
       if (!r.ok) {
         const msgs = {
           salaNaoExiste: '⚠ essa sala não existe mais',
           salaLotada: '⚠ sala lotada (' + r.players + '/' + r.max + ')',
           nickEmUso: '⚠ esse nick já está em uso nessa sala',
-          nickInvalido: '⚠ nick inválido',
         };
         err.textContent = msgs[r.reason] || ('⚠ ' + r.reason);
         return;
@@ -386,7 +407,6 @@
     refreshList();
   }
 
-  // ===== CRIAR SALA =====
   function createRoomScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -394,10 +414,10 @@
       <div class="c">
         <h1>CRIAR SALA</h1>
         <input id="crName" placeholder="nome da sala" maxlength="24" value="${MP.nick}'s room">
-        <p style="font-size:11px;margin-top:8px">limite de jogadores (recomendado: 20):</p>
+        <p style="font-size:11px;margin-top:8px">limite de jogadores:</p>
         <input id="crMax" type="number" min="2" max="200" value="20">
-        <p style="font-size:11px;margin-top:8px">live (opcional — Twitch ou YouTube):</p>
-        <input id="crLive" placeholder="twitch.tv/seucanal ou youtube.com/...">
+        <p style="font-size:11px;margin-top:8px">live (opcional):</p>
+        <input id="crLive" placeholder="twitch.tv/seucanal">
         <div class="err" id="crErr"></div>
         <button id="crOk">CRIAR</button>
         <button id="crBack" class="sec">← voltar</button>
@@ -419,17 +439,16 @@
     };
   }
 
-  // ===== MODO =====
   function modeScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
     o.innerHTML = `
       <div class="c">
         <h1>SALA: ${MP.room.name}</h1>
-        <p>código: <b style="color:#b8ff2e">${MP.room.id}</b> · max ${MP.room.maxPlayers}</p>
+        <p>código: <b style="color:#b8ff2e">${MP.room.id}</b></p>
         <p style="margin-top:12px">como jogar?</p>
         <button id="mpoSolo">🎮 SOZINHO</button>
-        <button id="mpoMulti">👥 MULTIPLAYER (chat em turnos)</button>
+        <button id="mpoMulti">👥 MULTIPLAYER</button>
         <button id="mpoAvEdit" class="sec">🎨 Mudar avatar</button>
         <button id="mpoExit" class="sec">← Sair da sala</button>
       </div>`;
@@ -440,92 +459,110 @@
     o.querySelector('#mpoExit').onclick = async () => { await api('leaveRoom'); MP.roomId = null; MP.room = null; lobbyScreen(); };
   }
 
-  // ===== START =====
+  // ============ START ============
   function start() {
     if (MP.started) return;
     MP.started = true;
     applyAvatar(MP.avatar);
-    closeAll(); // garante que nenhum modal tá cobrindo
-    buildHud();
-    buildChat();
-    // botão admin só se for MAIN_ADMIN
+    closeAll();
+
+    // HUD compacto
+    const h = $('div', { id: 'mpHud' });
+    document.body.appendChild(h);
+    MP.turnEl = h;
+
+    // Botão menu (topo direito)
+    const btn = $('button', { id: 'mpMenuBtn' }); btn.textContent = '☰';
+    btn.onclick = () => {
+      const m = document.getElementById('mpMenu');
+      m.classList.toggle('open');
+    };
+    document.body.appendChild(btn);
+
+    // Menu dropdown
+    const menu = $('div', { id: 'mpMenu' });
+    menu.innerHTML = `
+      <button id="mmAv">🎨 Trocar avatar</button>
+      <button id="mmChat">💬 Mostrar chat</button>
+      <button id="mmStudio">🛠 Ir pro Studio</button>
+      <button id="mmExit" class="danger">← Sair da sala</button>
+    `;
+    document.body.appendChild(menu);
+
+    // Chat
+    const chat = $('div', { id: 'mpChat' });
+    document.body.appendChild(chat);
+    const inp = $('div', { id: 'mpIn' });
+    inp.innerHTML = `<input id="mpTxt" maxlength="240" placeholder="mensagem..." autocomplete="off"><button id="mpSend">➤</button>`;
+    document.body.appendChild(inp);
+    const txt = inp.querySelector('#mpTxt');
+    const enviar = async () => {
+      const t = txt.value.trim(); if (!t) return;
+      txt.value = '';
+      const r = await api('chat', { text: t });
+      if (!r.ok && r.reason === 'naoEhSuaVez') addChat({ type: 'sys', nick: 'SISTEMA', text: 'é a vez de ' + r.turn });
+    };
+    inp.querySelector('#mpSend').onclick = enviar;
+    txt.onkeydown = e => { if (e.key === 'Enter') enviar(); };
+    MP.chatBar = inp;
+    MP.chatEl = chat;
+
+    // Ações do menu
+    menu.querySelector('#mmAv').onclick = () => { menu.classList.remove('open'); avatarScreen(() => { api('setAvatar', { avatar: MP.avatar }); }); };
+    menu.querySelector('#mmChat').onclick = () => {
+      MP.chatMin = !MP.chatMin;
+      chat.classList.toggle('min', MP.chatMin);
+      inp.classList.toggle('hidden', MP.chatMin);
+      menu.classList.remove('open');
+    };
+    menu.querySelector('#mmStudio').onclick = () => { window.location.href = '/studio.html'; };
+    menu.querySelector('#mmExit').onclick = async () => {
+      await api('leaveRoom');
+      MP.roomId = null; MP.room = null; MP.started = false;
+      location.reload();
+    };
+
+    // Painel admin: só MAIN_ADMIN
     if (MP.nick === ADMIN_NICK) {
       MP.isAdmin = true;
       buildAdminButton();
     }
-    buildAvatarButton();
+
     pollLoop(); moveLoop(); renderLoop();
-    // verifica se o jogo carregou
-    setTimeout(() => {
-      if (!window.StickDebug) {
-        const d = document.createElement('div');
-        d.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);' +
-          'background:#a02030;color:#fff;padding:20px;border-radius:12px;z-index:9999999;' +
-          'font-family:monospace;text-align:center;max-width:90vw';
-        d.innerHTML = '<b>⚠ JOGO NÃO CARREGOU</b><br><br>O arquivo game.js não respondeu.<br>' +
-          'Verifique se os arquivos estão na pasta <b>public/</b> correta.';
-        document.body.appendChild(d);
-      }
-    }, 3000);
+
     window.addEventListener('beforeunload', () => {
       try { navigator.sendBeacon('/api/game', JSON.stringify({ action: 'leaveRoom', nick: MP.nick, hwid: MY_HWID, roomId: MP.roomId })); } catch (e) {}
     });
   }
 
-  function buildHud() { const h = $('div', { id: 'mpHud' }); document.body.appendChild(h); MP.turnEl = h; }
   function updateHud(room) {
     const players = Object.values(room.players || {});
-    const online = players.map(p => (p.nick || '?') + (p.isAdmin ? ' ⚙' : '')).join(', ');
-    const myTurn = room.turnNick === MP.nick;
+    const meTurn = room.turnNick === MP.nick;
+    const nicks = players.map(p => (p.nick || '?') + (p.isAdmin ? '⚙' : '')).join(' ');
     MP.turnEl.innerHTML =
-      `<span class="me">${MP.nick}${MP.isAdmin ? ' <span class="adm">⚙</span>' : ''}</span> · ${MP.mode === 'multi' ? 'multi' : 'solo'}<br>` +
-      `sala: ${room.name} (${MP.roomId}) · ${players.length}/${room.maxPlayers}<br>` +
-      `online: ${online || '—'}<br>` +
-      (MP.mode === 'multi'
-        ? (myTurn ? '<span class="turn">▶ SUA VEZ de falar</span>' : `<span>⏳ vez de ${room.turnNick || '—'}</span>`)
-        : '<span style="color:#8a8a9a">chat entre jogadores desligado no modo sozinho</span>');
+      `<b>${MP.nick}</b>${MP.isAdmin ? ' <span class="adm">⚙</span>' : ''} · ${players.length}/${room.maxPlayers}<br>` +
+      `[${nicks}]` +
+      (MP.mode === 'multi' && meTurn ? ' <span class="turn">▶</span>' : '');
   }
 
-  function buildChat() {
-    const c = $('div', { id: 'mpChat' }); document.body.appendChild(c);
-    const i = $('div', { id: 'mpIn' });
-    i.innerHTML = `<input id="mpTxt" maxlength="240" placeholder="mensagem..." autocomplete="off"><button id="mpSend">➤</button>`;
-    document.body.appendChild(i);
-    const inp = i.querySelector('#mpTxt');
-    const enviar = async () => {
-      const txt = inp.value.trim(); if (!txt) return;
-      inp.value = '';
-      const r = await api('chat', { text: txt });
-      if (!r.ok && r.reason === 'naoEhSuaVez') {
-        addChat({ type: 'sys', nick: 'SISTEMA', text: 'calma, é a vez de ' + r.turn });
-      }
-    };
-    i.querySelector('#mpSend').onclick = enviar;
-    inp.onkeydown = e => { if (e.key === 'Enter') enviar(); };
-    MP.chatInput = inp;
-    MP.chatBar = i;
-  }
   function addChat(e) {
     const c = document.getElementById('mpChat'); if (!c) return;
     const cls = 'm' + (e.type === 'entity' ? ' ent' : e.type === 'sys' ? ' sys' : e.nick === MP.nick ? ' me' : '');
     const div = $('div', { class: cls });
     div.textContent = `${e.nick}: ${e.text}`;
     c.appendChild(div);
-    while (c.children.length > 40) c.removeChild(c.firstChild);
+    while (c.children.length > 30) c.removeChild(c.firstChild);
     c.scrollTop = c.scrollHeight;
   }
 
-  function buildAvatarButton() {
-    const b = $('button', { id: 'mpAvBtn' }); b.textContent = '🎨';
-    b.onclick = () => avatarScreen(() => { api('setAvatar', { avatar: MP.avatar }); });
-    document.body.appendChild(b);
-  }
-
+  // ============ ADMIN ============
   function buildAdminButton() {
-    if (document.getElementById('mpAdmBtn')) return;
-    const b = $('button', { id: 'mpAdmBtn' }); b.textContent = '⚙ PAINEL ADMIN';
-    b.onclick = openAdmin;
-    document.body.appendChild(b);
+    const menu = document.getElementById('mpMenu');
+    if (!menu || document.getElementById('mmAdmin')) return;
+    const b = $('button', { id: 'mmAdmin', class: 'admin' });
+    b.textContent = '⚙ Painel Admin';
+    b.onclick = () => { menu.classList.remove('open'); openAdmin(); };
+    menu.insertBefore(b, menu.firstChild);
   }
   function openAdmin() {
     if (document.getElementById('mpAdm')) return;
@@ -534,68 +571,56 @@
       <button class="x" id="mpAdmX">×</button>
       <h2>⚙ PAINEL ADMIN</h2>
       <h3>SPAWNAR ENTIDADE</h3>
-      <input id="mpAdmName" placeholder="nome da entidade" maxlength="18">
+      <input id="mpAdmName" placeholder="nome" maxlength="18">
       <select id="mpAdmKind">
-        <option value="goo">🖤 Gosma humanoide</option>
-        <option value="eye">👁 Olho flutuante</option>
+        <option value="goo">🖤 Gosma</option>
+        <option value="eye">👁 Olho</option>
         <option value="shadow">👤 Sombra</option>
       </select>
       <input id="mpAdmX2" placeholder="x" value="300">
       <input id="mpAdmY2" placeholder="y" value="120">
       <button id="mpAdmSpawn">SPAWNAR</button>
-      <h3>ENTIDADES ATIVAS</h3>
+      <h3>ENTIDADES</h3>
       <div id="mpAdmEnts"></div>
       <h3>DAR ADMIN</h3>
-      <input id="mpAdmGive" placeholder="nick do jogador" maxlength="${NICK_MAX}">
-      <button id="mpAdmGiveBtn">DAR ADMIN</button>
-      <h3>LIVE DA SALA</h3>
-      <input id="mpAdmLive" placeholder="twitch.tv/seucanal ou link do youtube">
-      <button id="mpAdmLiveBtn">DEFINIR LIVE</button>
-      <h3>EVENTO GLOBAL</h3>
-      <input id="mpAdmEvt" placeholder="ex: escurecer tela">
-      <button id="mpAdmEvtBtn">DISPARAR</button>
+      <input id="mpAdmGive" placeholder="nick" maxlength="24">
+      <button id="mpAdmGiveBtn">DAR</button>
+      <h3>LIVE</h3>
+      <input id="mpAdmLive" placeholder="twitch.tv/canal">
+      <button id="mpAdmLiveBtn">DEFINIR</button>
       <div class="st" id="mpAdmSt"></div>`;
     document.body.appendChild(o);
     const st = o.querySelector('#mpAdmSt');
-    const setSt = t => { st.textContent = t; setTimeout(() => { if (st.textContent === t) st.textContent = ''; }, 2500); };
-
+    const setSt = t => { st.textContent = t; setTimeout(() => { if (st.textContent === t) st.textContent = ''; }, 2000); };
     o.querySelector('#mpAdmX').onclick = () => o.remove();
     o.querySelector('#mpAdmSpawn').onclick = async () => {
-      const name = o.querySelector('#mpAdmName').value.trim() || 'SOMBRA';
-      const kind = o.querySelector('#mpAdmKind').value;
-      const x = +o.querySelector('#mpAdmX2').value || 300;
-      const y = +o.querySelector('#mpAdmY2').value || 120;
-      const r = await api('spawnEntity', { name, kind, x, y });
-      setSt(r.ok ? '✅ spawnada' : '❌ ' + (r.reason || 'erro'));
+      const r = await api('spawnEntity', {
+        name: o.querySelector('#mpAdmName').value.trim() || 'SOMBRA',
+        kind: o.querySelector('#mpAdmKind').value,
+        x: +o.querySelector('#mpAdmX2').value || 300,
+        y: +o.querySelector('#mpAdmY2').value || 120,
+      });
+      setSt(r.ok ? '✅' : '❌ ' + (r.reason || ''));
     };
     o.querySelector('#mpAdmGiveBtn').onclick = async () => {
-      const n = o.querySelector('#mpAdmGive').value.trim();
-      if (!n) return;
+      const n = o.querySelector('#mpAdmGive').value.trim(); if (!n) return;
       const r = await api('giveAdmin', { nick: n });
-      setSt(r.ok ? '✅ ' + n + ' agora é admin' : '❌ ' + (r.reason || 'erro'));
+      setSt(r.ok ? '✅ ' + n : '❌ ' + (r.reason || ''));
     };
     o.querySelector('#mpAdmLiveBtn').onclick = async () => {
-      const url = o.querySelector('#mpAdmLive').value.trim();
-      const r = await api('setLive', { liveUrl: url });
-      setSt(r.ok ? (r.live ? '✅ live definida' : '✅ live removida') : '❌');
+      const r = await api('setLive', { liveUrl: o.querySelector('#mpAdmLive').value.trim() });
+      setSt(r.ok ? '✅' : '❌');
     };
-    o.querySelector('#mpAdmEvtBtn').onclick = async () => {
-      const ev = o.querySelector('#mpAdmEvt').value.trim();
-      if (!ev) return;
-      const r = await api('globalEvent', { event: ev });
-      setSt(r.ok ? '✅ evento disparado' : '❌');
-    };
-
     const renderEnts = (room) => {
       const box = o.querySelector('#mpAdmEnts'); box.innerHTML = '';
       (room.entities || []).forEach(e => {
         const d = $('div', { class: 'row' });
-        const sp = $('span'); sp.textContent = `${e.name} (${e.kind}) x=${e.x}`;
-        const b = $('button'); b.textContent = 'remover'; b.style.width = 'auto'; b.style.padding = '3px 8px';
-        b.onclick = async () => { await api('removeEntity', { id: e.id }); setSt('✅ removida'); refreshEnts(); };
-        d.appendChild(sp); d.appendChild(b); box.appendChild(d);
+        d.innerHTML = `<span>${e.name}</span>`;
+        const b = $('button'); b.textContent = '×'; b.style.width = 'auto'; b.style.padding = '2px 8px';
+        b.onclick = async () => { await api('removeEntity', { id: e.id }); refreshEnts(); };
+        d.appendChild(b); box.appendChild(d);
       });
-      if (!room.entities || !room.entities.length) box.innerHTML = '<span style="color:#888">— nenhuma</span>';
+      if (!room.entities || !room.entities.length) box.innerHTML = '<span style="color:#888;font-size:10px">—</span>';
     };
     const refreshEnts = async () => {
       const s = await getState();
@@ -606,30 +631,23 @@
     MP.adminEntsRefresh = refreshEnts;
   }
 
-  // ===== POLL =====
+  // ============ POLL ============
   async function pollLoop() {
     try {
       const s = await getState();
       if (s.v !== MP.lastV) {
         MP.lastV = s.v;
         const room = s.rooms && s.rooms[MP.roomId];
-        if (!room) {
-          addChat({ type: 'sys', nick: 'SISTEMA', text: 'a sala foi fechada' });
-          setTimeout(() => lobbyScreen(), 1500);
-          return;
-        }
+        if (!room) { setTimeout(() => location.reload(), 1500); return; }
         MP.room = room;
         updateHud(room);
         syncChat(room);
         syncEntities(room);
         syncAvatars(room);
-        syncLive(room);
         if (MP.adminEntsRefresh && document.getElementById('mpAdm')) MP.adminEntsRefresh();
-        if (room.players[MP.nick] && room.players[MP.nick].isAdmin && MP.nick === ADMIN_NICK && !MP.isAdmin) {
-          MP.isAdmin = true;
+        if (MP.nick === ADMIN_NICK && !document.getElementById('mmAdmin')) {
           buildAdminButton();
         }
-        if (MP.chatBar) MP.chatBar.classList.toggle('off', MP.mode === 'multi' && room.turnNick !== MP.nick);
       }
     } catch (e) {}
     setTimeout(pollLoop, 1000);
@@ -656,20 +674,17 @@
         MP.avatars[nick] = el;
       }
       const a = p.avatar || DEFAULT_AVATAR;
-      const sig = JSON.stringify(a) + '|' + p.isAdmin;
+      const sig = JSON.stringify(a);
       if (el._sig !== sig) {
         el._sig = sig;
-        const hair = a.hair === 'RAINBOW'
-          ? 'linear-gradient(90deg,#ff0000,#ffcc00,#00ff00,#00d4ff,#8a2be2,#ff0000)'
-          : a.hair;
-        const hairTop = hair.includes('gradient') ? '#ff0000' : hair;
+        const hairTop = a.hair === 'RAINBOW' ? '#ff0000' : a.hair;
         el.innerHTML = `
           <div class="body" style="background:${a.shirt};border-color:${a.pants}">
             <div class="head" style="background:linear-gradient(180deg,${hairTop} 0 50%, ${a.skin} 50% 100%)"></div>
             <div class="eye l" style="background:${a.eyes}"></div>
             <div class="eye r" style="background:${a.eyes}"></div>
           </div>
-          ${nick}${p.isAdmin ? ' ⚙' : ''}`;
+          ${nick}`;
       }
       el._x = p.x; el._y = p.y;
     }
@@ -688,7 +703,7 @@
         document.body.appendChild(el);
         MP.entities[e.id] = el;
       }
-      el._x = e.x; el._y = e.y; el._id = e.id; el._name = e.name;
+      el._x = e.x; el._y = e.y; el._id = e.id;
     });
     for (const id in MP.entities) if (!used[id]) { MP.entities[id].remove(); delete MP.entities[id]; }
   }
@@ -701,33 +716,6 @@
     const j = $('div', { id: 'mpJump' }); j.textContent = '👁';
     document.body.appendChild(j);
     setTimeout(() => j.remove(), 500);
-  }
-
-  function syncLive(room) {
-    const live = room.live;
-    if (!live) {
-      if (MP.liveEl) { MP.liveEl.remove(); MP.liveEl = null; MP.liveSig = null; }
-      return;
-    }
-    const sig = live.type + ':' + live.id;
-    if (MP.liveSig === sig && MP.liveEl) return;
-    if (MP.liveEl) MP.liveEl.remove();
-    MP.liveSig = sig;
-    const box = $('div', { id: 'mpLive' });
-    let src = '';
-    if (live.type === 'twitch') {
-      const host = location.hostname || 'localhost';
-      src = `https://player.twitch.tv/?channel=${live.id}&parent=${host}&muted=true`;
-    } else if (live.type === 'youtube') {
-      src = `https://www.youtube.com/embed/${live.id}?autoplay=1&mute=1`;
-    }
-    box.innerHTML = `
-      <button class="min" id="mpLiveMin">–</button>
-      <span class="tag">● AO VIVO</span>
-      <iframe src="${src}" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
-    document.body.appendChild(box);
-    box.querySelector('#mpLiveMin').onclick = () => box.classList.toggle('minimized');
-    MP.liveEl = box;
   }
 
   let lastSent = 0;
