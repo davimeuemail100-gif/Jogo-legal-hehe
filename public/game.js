@@ -1291,7 +1291,7 @@ function updateEnding() {
     ctx.scale(p.face < 0 ? -1 : 1, p.dead && p.popped ? -1 : 1);
     ctx.drawImage(img, -6, -8);
     ctx.restore();
-    if (G.skin === 'aranha' || G.skin = 'zoom_spider') {
+    if (G.skin === 'aranha' || G.skin === 'zoom_spider') {
      ctx.fillStyle = '#ff3347'; ctx.fillRect(dx - 1, dy - 3, 14, 3);
      ctx.fillStyle = '#ffffff'; ctx.fillRect(dx + 1, dy - 2, 2, 1); ctx.fillRect(dx + 8, dy - 2, 2, 1);
    }
