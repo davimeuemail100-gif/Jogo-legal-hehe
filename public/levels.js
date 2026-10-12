@@ -451,7 +451,7 @@ const LEVELS = [
             { wait: 1.5 },
             { say: 'amoMeusAmigos' },
             { wait: 2.8 },
-            { say: 'odeiomeusamigos' },
+            { say: 'odeioMeusAmigos' }, 
             { wait: 3.8 },
             { wait: 2 },
 { run: () => { a.black(0); a.sfx('stinger'); a.shake(1.5, 3); a.glitch(0.8, 1.5); } },
