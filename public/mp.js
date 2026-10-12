@@ -2,6 +2,8 @@
   'use strict';
   const $ = (t, p) => { const e = document.createElement(t); if (p) for (const k in p) e.setAttribute(k, p[k]); return e; };
 
+  const NICK_MAX = 24;
+
   const DEFAULT_AVATAR = {
     skin: '#ffffff', hair: 'RAINBOW', shirt: '#8b5a2b',
     pants: '#1a1a1a', shoes: '#ff8a2a', eyes: '#8a2be2',
@@ -22,7 +24,6 @@
     turnEl: null, chatBar: null, liveEl: null, liveSig: null,
   };
 
-  // ============ CSS ============
   const s = document.createElement('style');
   s.textContent = `
     #mpo { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
@@ -139,7 +140,6 @@
   `;
   document.head.appendChild(s);
 
-  // ============ HWID ============
   async function getHWID() {
     let id = localStorage.getItem('wrick_hwid');
     if (id) return id;
@@ -165,7 +165,6 @@
     return id;
   }
 
-  // ============ API ============
   let MY_HWID = null;
   async function api(action, data) {
     if (!MY_HWID) MY_HWID = await getHWID();
@@ -178,7 +177,6 @@
   }
   const getState = async () => (await fetch('/api/game')).json();
 
-  // ============ AVATAR ============
   function loadAvatar() {
     try {
       const raw = localStorage.getItem('wrick_avatar');
@@ -248,7 +246,6 @@
     return c;
   }
 
-  // ============ TELAS ============
   function closeAll() { document.querySelectorAll('#mpo').forEach(x => x.remove()); }
 
   function loginScreen() {
@@ -257,8 +254,8 @@
     o.innerHTML = `
       <div class="c">
         <h1>WRICK ONLINE</h1>
-        <p>escolha um nick único (2–18 letras)</p>
-        <input id="mpoNick" maxlength="18" placeholder="seu nick" autocomplete="off">
+        <p>escolha um nick único (2–${NICK_MAX} letras)</p>
+        <input id="mpoNick" maxlength="${NICK_MAX}" placeholder="seu nick" autocomplete="off">
         <button id="mpoAv" class="sec">🎨 Escolher avatar</button>
         <div class="err" id="mpoErr"></div>
         <button id="mpoOk">ENTRAR</button>
@@ -271,7 +268,8 @@
     const tentar = () => {
       const nick = inp.value.trim();
       if (!nick || nick.length < 2) { err.textContent = '⚠ nick muito curto'; return; }
-      if (!/^[\wÀ-ÿ\-_. ]{2,18}$/.test(nick)) { err.textContent = '⚠ só letras, números, _ - . e espaço'; return; }
+      if (nick.length > NICK_MAX) { err.textContent = '⚠ nick muito longo (máx ' + NICK_MAX + ')'; return; }
+      if (!/^[\wÀ-ÿ\-_. ]{2,24}$/.test(nick)) { err.textContent = '⚠ só letras, números, _ - . e espaço'; return; }
       MP.nick = nick;
       closeAll();
       lobbyScreen();
@@ -322,7 +320,6 @@
     o.querySelector('#avReset').onclick = () => { MP.avatar = { ...DEFAULT_AVATAR }; saveAvatar(); renderSw(); renderPrev(); };
   }
 
-  // ============ LOBBY ============
   async function lobbyScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -444,7 +441,6 @@
     o.querySelector('#mpoExit').onclick = async () => { await api('leaveRoom'); MP.roomId = null; MP.room = null; lobbyScreen(); };
   }
 
-  // ============ START ============
   function start() {
     applyAvatar(MP.avatar);
     buildHud(); buildChat();
@@ -530,7 +526,7 @@
       <h3>ENTIDADES ATIVAS</h3>
       <div id="mpAdmEnts"></div>
       <h3>DAR ADMIN</h3>
-      <input id="mpAdmGive" placeholder="nick do jogador">
+      <input id="mpAdmGive" placeholder="nick do jogador" maxlength="${NICK_MAX}">
       <button id="mpAdmGiveBtn">DAR ADMIN</button>
       <h3>LIVE DA SALA</h3>
       <input id="mpAdmLive" placeholder="twitch.tv/seucanal ou link do youtube">
@@ -590,7 +586,6 @@
     MP.adminEntsRefresh = refreshEnts;
   }
 
-  // ============ POLL ============
   async function pollLoop() {
     try {
       const s = await getState();
@@ -626,7 +621,6 @@
     lastChatLen = room.chat.length;
   }
 
-  // ============ AVATARES REMOTOS ============
   function syncAvatars(room) {
     const used = {};
     for (const nick in room.players) {
@@ -660,7 +654,6 @@
     for (const nick in MP.avatars) if (!used[nick]) { MP.avatars[nick].remove(); delete MP.avatars[nick]; }
   }
 
-  // ============ ENTIDADES ============
   function syncEntities(room) {
     const used = {};
     (room.entities || []).forEach(e => {
@@ -688,7 +681,6 @@
     setTimeout(() => j.remove(), 500);
   }
 
-  // ============ LIVE ============
   function syncLive(room) {
     const live = room.live;
     if (!live) {
@@ -717,7 +709,6 @@
     MP.liveEl = box;
   }
 
-  // ============ MOVE ============
   let lastSent = 0;
   function moveLoop() {
     const g = window.StickDebug && window.StickDebug.G;
@@ -731,7 +722,6 @@
     setTimeout(moveLoop, 400);
   }
 
-  // ============ RENDER ============
   function renderLoop() {
     const g = window.StickDebug && window.StickDebug.G;
     if (g && g.camX != null) {
@@ -754,7 +744,6 @@
     requestAnimationFrame(renderLoop);
   }
 
-  // ============ INIT ============
   loadAvatar();
   window.addEventListener('load', () => setTimeout(loginScreen, 300));
 })();
