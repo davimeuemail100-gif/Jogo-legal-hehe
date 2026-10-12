@@ -4,7 +4,7 @@ const redis = Redis.fromEnv();
 const KEY = 'wrick:state';
 const GROQ_KEY = process.env.GROQ_KEY;
 const MAIN_ADMIN = 'DeRaminWrick';
-const TTL = 20;
+const TTL = 90;
 const ROOM_TTL = 3600;
 
 const NICK_MAX = 24;
@@ -128,7 +128,6 @@ export default async function handler(req, res) {
     const roomId = rawRoomId ? String(rawRoomId).toUpperCase().slice(0, 8) : null;
     const isMain = nick === MAIN_ADMIN;
 
-    // ===== LISTAR SALAS =====
     if (action === 'listRooms') {
       const list = Object.values(s.rooms).map(r => ({
         id: r.id, name: r.name, host: r.host,
@@ -152,7 +151,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, build: b });
     }
 
-    // ===== CRIAR SALA =====
     if (action === 'createRoom') {
       if (!hwid) return res.status(200).json({ ok: false, reason: 'semHWID' });
       if (!nick || !NICK_REGEX.test(nick))
@@ -161,7 +159,6 @@ export default async function handler(req, res) {
       const maxPlayers = Math.max(2, Math.min(200, +rest.maxPlayers || 20));
       const live = sanitizeLive(rest.liveUrl);
       const id = newRoomId(s.rooms);
-      // admins: só o MAIN_ADMIN
       const admins = isMain ? [MAIN_ADMIN] : [];
       s.rooms[id] = {
         id, name: roomName, host: nick, maxPlayers, live,
@@ -184,7 +181,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, roomId: id, nick, room: s.rooms[id] });
     }
 
-    // ===== ENTRAR =====
     if (action === 'joinRoom') {
       if (!hwid) return res.status(200).json({ ok: false, reason: 'semHWID' });
       if (!nick || !NICK_REGEX.test(nick))
@@ -198,7 +194,6 @@ export default async function handler(req, res) {
       const existing = r.players[nick];
       if (existing && existing.hwid && existing.hwid !== hwid)
         return res.status(200).json({ ok: false, reason: 'nickEmUso' });
-      // se for MAIN_ADMIN, garante que tá na lista de admins
       if (isMain && !r.admins.includes(MAIN_ADMIN)) r.admins.push(MAIN_ADMIN);
       const isAdmin = r.admins.includes(nick);
       r.players[nick] = {
@@ -231,7 +226,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // ===== PRECISA ESTAR NA SALA =====
     const r = s.rooms[roomId];
     if (!r) return res.status(200).json({ ok: false, reason: 'salaNaoExiste' });
     if (!nick || !r.players[nick] || r.players[nick].hwid !== hwid)
@@ -257,7 +251,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // ---- CHAT (funciona em solo também) ----
     if (action === 'chat') {
       if (me.mode === 'multi' && r.turnNick && r.turnNick !== nick)
         return res.status(200).json({ ok: false, reason: 'naoEhSuaVez', turn: r.turnNick });
@@ -274,7 +267,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, turn: r.turnNick });
     }
 
-    // ---- ENTIDADE (IA) ----
     if (action === 'entityTalk') {
       const e = r.entities.find(x => x.id === rest.id);
       if (!e) return res.status(200).json({ ok: false, reason: 'entidadeNaoExiste' });
@@ -296,7 +288,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, text: out, scare });
     }
 
-    // ===== DAQUI PRA BAIXO SÓ ADMIN =====
     if (!me.isAdmin) return res.status(200).json({ ok: false, reason: 'notAdmin' });
 
     if (action === 'spawnEntity') {
