@@ -15,7 +15,7 @@ const DEFAULT_AVATAR = {
   pants: '#1a1a1a', shoes: '#ff8a2a', eyes: '#8a2be2',
 };
 
-const EMPTY = () => ({ v: 0, rooms: {}, hwidIndex: {}, builds: {} });
+const EMPTY = () => ({ v: 0, rooms: {}, hwidIndex: {}, builds: {}, toolbox: [] });
 
 async function getState() {
   let s = await redis.get(KEY);
@@ -24,6 +24,7 @@ async function getState() {
   if (!s.rooms) s.rooms = {};
   if (!s.hwidIndex) s.hwidIndex = {};
   if (!s.builds) s.builds = {};
+  if (!s.toolbox) s.toolbox = [];
   const now = Date.now();
   let mudou = false;
   for (const rid in s.rooms) {
@@ -128,6 +129,7 @@ export default async function handler(req, res) {
     const roomId = rawRoomId ? String(rawRoomId).toUpperCase().slice(0, 8) : null;
     const isMain = nick === MAIN_ADMIN;
 
+    // ===== LISTAR SALAS =====
     if (action === 'listRooms') {
       const list = Object.values(s.rooms).map(r => ({
         id: r.id, name: r.name, host: r.host,
@@ -139,18 +141,59 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, rooms: list });
     }
 
+    // ===== BUILD: SALVAR =====
     if (action === 'saveBuild') {
       if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
       s.builds[nick] = rest.build;
       await save(s);
       return res.status(200).json({ ok: true });
     }
+
+    // ===== BUILD: CARREGAR =====
     if (action === 'loadBuild') {
       if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
       const b = s.builds[nick] || null;
       return res.status(200).json({ ok: true, build: b });
     }
 
+    // ===== TOOLBOX: PUBLICAR =====
+    if (action === 'publishBuild') {
+      if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
+      const name = String(rest.name || 'Sem nome').slice(0, 40).trim();
+      const desc = String(rest.desc || '').slice(0, 200).trim();
+      const type = rest.type === 'character' ? 'character' : 'model';
+      if (!name) return res.status(200).json({ ok: false, reason: 'semNome' });
+      if (!rest.build || !rest.build.parts || !rest.build.parts.length)
+        return res.status(200).json({ ok: false, reason: 'vazio' });
+      const id = 'b' + Math.random().toString(36).slice(2, 8);
+      s.toolbox.unshift({
+        id, author: nick, name, desc, type,
+        parts: rest.build.parts.length,
+        build: rest.build,
+        ts: Date.now(),
+      });
+      if (s.toolbox.length > 200) s.toolbox.length = 200;
+      await save(s);
+      return res.status(200).json({ ok: true, id });
+    }
+
+    // ===== TOOLBOX: LISTAR =====
+    if (action === 'listToolbox') {
+      const list = (s.toolbox || []).map(b => ({
+        id: b.id, author: b.author, name: b.name, desc: b.desc,
+        type: b.type, parts: b.parts, ts: b.ts,
+      }));
+      return res.status(200).json({ ok: true, list });
+    }
+
+    // ===== TOOLBOX: PEGAR UM =====
+    if (action === 'getToolbox') {
+      const b = (s.toolbox || []).find(x => x.id === rest.id);
+      if (!b) return res.status(200).json({ ok: false, reason: 'naoAchou' });
+      return res.status(200).json({ ok: true, build: b.build, meta: { name: b.name, author: b.author, type: b.type } });
+    }
+
+    // ===== CRIAR SALA =====
     if (action === 'createRoom') {
       if (!hwid) return res.status(200).json({ ok: false, reason: 'semHWID' });
       if (!nick || !NICK_REGEX.test(nick))
@@ -181,6 +224,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, roomId: id, nick, room: s.rooms[id] });
     }
 
+    // ===== ENTRAR EM SALA =====
     if (action === 'joinRoom') {
       if (!hwid) return res.status(200).json({ ok: false, reason: 'semHWID' });
       if (!nick || !NICK_REGEX.test(nick))
@@ -215,6 +259,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, roomId, nick, room: r });
     }
 
+    // ===== SAIR DA SALA =====
     if (action === 'leaveRoom') {
       const r = s.rooms[roomId];
       if (r && nick && r.players[nick] && r.players[nick].hwid === hwid) {
@@ -226,6 +271,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // ===== PRECISA ESTAR NA SALA =====
     const r = s.rooms[roomId];
     if (!r) return res.status(200).json({ ok: false, reason: 'salaNaoExiste' });
     if (!nick || !r.players[nick] || r.players[nick].hwid !== hwid)
@@ -288,6 +334,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, text: out, scare });
     }
 
+    // ===== ADMIN =====
     if (!me.isAdmin) return res.status(200).json({ ok: false, reason: 'notAdmin' });
 
     if (action === 'spawnEntity') {
