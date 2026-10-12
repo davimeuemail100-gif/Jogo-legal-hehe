@@ -25,7 +25,6 @@
     started: false, overlay: null,
   };
 
-  // ============ CSS ============
   const s = document.createElement('style');
   s.textContent = `
     #mpo{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
@@ -143,7 +142,6 @@
   `;
   document.head.appendChild(s);
 
-  // ============ HWID ============
   async function getHWID() {
     let id = localStorage.getItem('wrick_hwid');
     if (id) return id;
@@ -181,7 +179,6 @@
   }
   const getState = async () => (await fetch('/api/game')).json();
 
-  // ============ AVATAR ============
   function loadAvatar() {
     try {
       const raw = localStorage.getItem('wrick_avatar');
@@ -255,7 +252,6 @@
 
   function closeAll() { document.querySelectorAll('#mpo').forEach(x => x.remove()); }
 
-  // ============ LOGIN ============
   function loginScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -287,7 +283,6 @@
     inp.onkeydown = e => { if (e.key === 'Enter') tentar(); };
   }
 
-  // ============ AVATAR ============
   function avatarScreen(back) {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -330,7 +325,6 @@
     o.querySelector('#avReset').onclick = () => { MP.avatar = { ...DEFAULT_AVATAR }; saveAvatar(); renderSw(); renderPrev(); };
   }
 
-  // ============ LOBBY ============
   async function lobbyScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -440,26 +434,22 @@
     o.querySelector('#mpoExit').onclick = async () => { await api('leaveRoom'); MP.roomId = null; MP.room = null; lobbyScreen(); };
   }
 
-  // ============ START ============
   function start() {
     if (MP.started) return;
     MP.started = true;
     applyAvatar(MP.avatar);
     closeAll();
 
-    // HUD
     const h = $('div', { id: 'mpHud' });
     document.body.appendChild(h);
     MP.turnEl = h;
 
-    // Overlay (onde os outros jogadores vão ser desenhados)
     const ov = $('canvas', { id: 'mpOverlay' });
     ov.width = 320; ov.height = 180;
     document.body.appendChild(ov);
     MP.overlay = ov;
     MP.overlayCtx = ov.getContext('2d');
 
-    // Botão menu
     const btn = $('button', { id: 'mpMenuBtn' }); btn.textContent = '☰';
     btn.onclick = (e) => {
       e.stopPropagation();
@@ -472,7 +462,6 @@
     };
     document.body.appendChild(btn);
 
-    // Menu
     const menu = $('div', { id: 'mpMenu' });
     menu.innerHTML = `
       <button id="mmAv">🎨 Trocar avatar</button>
@@ -482,7 +471,6 @@
     `;
     document.body.appendChild(menu);
 
-    // Chat
     const chat = $('div', { id: 'mpChat' });
     chat.innerHTML = `<div id="mpChatMsgs"></div>
       <div id="mpChatInputWrap">
@@ -525,7 +513,6 @@
       menu.insertBefore(ab, menu.firstChild);
     }
 
-    // Diálogo com entidade
     const ei = $('div', { id: 'mpEntInput' });
     ei.innerHTML = `
       <div class="who" id="mpEntWho"></div>
@@ -596,7 +583,6 @@
     if (chat) chat.scrollTop = chat.scrollHeight;
   }
 
-  // ============ ADMIN ============
   function openAdmin() {
     if (document.getElementById('mpAdm')) return;
     const o = $('div', { id: 'mpAdm' });
@@ -657,7 +643,6 @@
     MP.adminEntsRefresh = refreshEnts;
   }
 
-  // ============ POLL ============
   async function pollLoop() {
     try {
       const s = await getState();
@@ -683,13 +668,12 @@
     lastChatLen = room.chat.length;
   }
 
-  // ============ OUTROS JOGADORES (só guarda os dados) ============
+  // SEM filtro de mode: todo mundo na sala aparece no mapa
   function syncRemote(room) {
     const used = {};
     for (const nick in room.players) {
       if (nick === MP.nick) continue;
       const p = room.players[nick];
-      if (p.mode !== 'multi') continue;
       used[nick] = true;
       let r = MP.remote[nick];
       if (!r) {
@@ -701,7 +685,6 @@
     for (const nick in MP.remote) if (!used[nick]) delete MP.remote[nick];
   }
 
-  // ============ ENTIDADES ============
   function syncEntities(room) {
     const used = {};
     (room.entities || []).forEach(e => {
@@ -738,7 +721,6 @@
     setTimeout(() => j.remove(), 500);
   }
 
-  // ============ HEARTBEAT (manda posição sempre) ============
   let lastSent = 0;
   let lastX = 40, lastY = 120, lastFace = 1;
   function moveLoop() {
@@ -758,7 +740,6 @@
     setTimeout(moveLoop, 500);
   }
 
-  // ============ RENDER: desenha os outros Wricks no mapa ============
   function renderLoop() {
     const g = window.StickDebug && window.StickDebug.G;
     const ov = MP.overlay;
@@ -780,7 +761,6 @@
     if (g && g.camX != null) {
       const camX = g.camX, camY = g.camY;
 
-      // --- OUTROS JOGADORES ---
       for (const nick in MP.remote) {
         const r = MP.remote[nick];
         const a = r.avatar || DEFAULT_AVATAR;
@@ -816,7 +796,6 @@
         ctx.drawImage(img, -6, -8);
         ctx.restore();
 
-        // nome em cima
         ctx.font = '6px monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -826,8 +805,6 @@
         ctx.fillStyle = '#b8ff2e';
         ctx.fillText(nick, px + 6, nameY);
       }
-
-      // --- ENTIDADES já são HTML por cima, então não desenha aqui ---
     }
 
     requestAnimationFrame(renderLoop);
