@@ -1,55 +1,20 @@
 const CONFIG = {
   TITLE: 'WRICK E SEUS AMIGOS',
-
-  WIDTH: 320,
-  HEIGHT: 180,
-  TILE: 16,
-
+  WIDTH: 320, HEIGHT: 180, TILE: 16,
   FONT: '"Press Start 2P", "Courier New", monospace',
-
   PHYSICS: {
-    gravity: 950,
-    runSpeed: 90,
-    groundAccel: 1000,
-    groundFriction: 1300,
-    airAccel: 700,
-    jumpVelocity: 400,
-    jumpCut: 1,
-    maxFall: 330,
-    coyoteTime: 0.02,
-    jumpBuffer: 0.02,
+    gravity: 950, runSpeed: 90, groundAccel: 1000, groundFriction: 1300,
+    airAccel: 700, jumpVelocity: 400, jumpCut: 1, maxFall: 330,
+    coyoteTime: 0.02, jumpBuffer: 0.02,
   },
-
-  PLAYER: {
-    width: 8,
-    height: 14,
-    interactRange: 22,
-  },
-
-  DIFFICULTY: {
-    respawnDelay: 1.1,
-    glitchPlatformTime: 0.55,
-    glitchPlatformRespawn: 2.5,
-  },
-
-  SECRETS: {
-    idleSeconds: 30,
-    deathsForMessage: 3,
-  },
-
-  FRIEND: {
-    delay: 16,
-    waitCall: 110,
-    teleport: 200,
-  },
-
+  PLAYER: { width: 8, height: 14, interactRange: 22 },
+  DIFFICULTY: { respawnDelay: 1.1, glitchPlatformTime: 0.55, glitchPlatformRespawn: 2.5 },
+  SECRETS: { idleSeconds: 30, deathsForMessage: 3 },
+  FRIEND: { delay: 16, waitCall: 110, teleport: 200 },
   AUDIO: { master: 0.6, music: 0.3, sfx: 0.45 },
-
   TEXT_SPEED: 42,
-
   START_LEVEL: 0,
   DEBUG: false,
-
   KEYS: {
     left:     ['ArrowLeft', 'KeyA', 'TouchLeft'],
     right:    ['ArrowRight', 'KeyD', 'TouchRight'],
