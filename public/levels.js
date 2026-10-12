@@ -11,14 +11,8 @@ const countdown = (a) => ['3', '2', '1'].flatMap((n, i) => [
   { wait: 1 },
 ]);
 const floweyTalk = {
-  name: 'FLOWEY',
-  sheet: 'chick',
-  color: '#ffd84a',
-  lines: [
-    'Howdy! Eu sou FLOWEY.',
-    'FLOWEY, a FLOR!',
-    'Quer ouvir minha música? Ela é bem legal!',
-  ],
+  name: 'FLOWEY', sheet: 'chick', color: '#ffd84a',
+  lines: ['Howdy! Eu sou FLOWEY.', 'FLOWEY, a FLOR!', 'Quer ouvir minha música? Ela é bem legal!'],
   choices: [
     { text: 'Sim, quero ouvir!', onSelect: (a) => {
         a.music.play('flowey');
@@ -36,15 +30,8 @@ const floweyTalk = {
 };
 function napstablookTalk(extra) {
   return {
-    name: 'NAPSTABLOOK',
-    color: '#e8e8f0',
-    mode: 'ghost',
-    lines: (extra || []).concat([
-      'oh no...',
-      'eu sou o napstablook...',
-      'eu fiz uma música...',
-      'quer ouvir? ...talvez...',
-    ]),
+    name: 'NAPSTABLOOK', color: '#e8e8f0', mode: 'ghost',
+    lines: (extra || []).concat(['oh no...', 'eu sou o napstablook...', 'eu fiz uma música...', 'quer ouvir? ...talvez...']),
     choices: [
       { text: 'Sim, quero ouvir.', onSelect: (a) => {
           a.music.play('napstablook');
@@ -62,16 +49,18 @@ function napstablookTalk(extra) {
     ],
   };
 }
+
 const LEVELS = [
+  // ===== MISSÃO 1 — OS OVOS DO ERI =====
   {
     name: 'OS OVOS DO ERI', theme: 'farm', friend: 'eri', item: 'egg', secrets: false,
     friendWait: 'me espera!',
     map: joinScreens([
-      ['....................','....................','....................','....................','....................','....................','....................','..........o.........','.........===........','.PN.S.f....L.L..R...','####################','####################'],
+      ['....................','....................','....................','....................','....................','....................','....................','..........o.........','.........===........','.PN.S.f..N.L.N..R.N.','####################','####################'],
       ['....................','....................','....................','....................','....................','.............o......','............===.....','.......o............','......===.......o...','..N.f.......L.L.....','####################','####################'],
       ['....................','....................','....................','....................','....................','....................','.........o..........','....o...===....o....','...===.........==...','.b........T.......f.','#####..#######..####','#####..#######..####'],
-      ['....................','....................','....................','....................','..............o.....','.............===....','.........o..........','........===.........','....o...............','.c.....N.....Y...f..','####################','####################'],
-      ['....................','....................','....................','....................','....................','....................','...........o........','..........===.......','....................','..H...f.......N..b..','########...#########','########...#########'],
+      ['....................','....................','....................','....................','..............o.....','.............===....','.........o..........','........===.........','....o...............','.c...........Y...f..','####################','####################'],
+      ['....................','....................','....................','....................','....................','....................','...........o........','..........===.......','....................','..H...f..........b..','########...#########','########...#########'],
       ['....................','....................','....................','....................','..........o.........','....................','.......#######......','....o.########......','....##########......','.c..##########...f..','####################','####################'],
     ]),
     npcs: [
@@ -99,6 +88,7 @@ const LEVELS = [
     },
     events: [
       { x: 47, run: (a) => a.say('naoMeChamam') },
+      // ===== CENA DO PENHASCO — ESCOLHA =====
       { x: 106, w: 4, run: (a) => {
         const edge = 114 * 16;
         a.seq([
@@ -109,34 +99,70 @@ const LEVELS = [
           { talk: ['eri', ['Ah... posso te contar uma coisa?', 'Ontem teve festa lá em casa. O Zoom e o Torajo vieram.', 'A gente não te chamou porque...', '...sei lá. Você é meio esquisito, Wrick.', 'Mas hoje você foi legal! Hihi!']] },
           { run: () => { a.friendFace(1); a.music.stop(2.5); } },
           { wait: 2.8 },
-          { run: () => a.walkTo(edge - 22, 18) },
-          { until: (a) => a.player.autoX == null },
+          // Eri chega na beirada
+          { run: () => a.friendWalk(edge + 4, 22) },
+          { until: (a) => a.friend.mode === 'idle' },
           { wait: 1 },
-          { black: 1 }, { run: () => a.sfx('thud') },
-          { wait: 0.7 },
-          { run: () => {
-            const f = a.friend;
-            a.friendLook('scared');
-            f.x = edge + 2;
-            a.friendSay('AH!');
-            a.friendFall(30, () => {
-              a.sfx('crack'); a.shake(0.3, 2);
-              a.friend.cracked = true;
-              a.burst(a.friend.x + 6, a.friend.y + 11, 14, ['#fff7e8', '#ffcf3a', '#ffffff'], 60);
-            });
-          } },
-          { black: 0 },
-          { until: (a) => a.friend.cracked },
-          { wait: 2.8 },
-          ...a.laughSteps(1),
-          { talk: ['stick', ['Ops.', 'Ele escorregou.']] },
-          { wait: 0.8 },
-          { fade: [1, 1.5] }, { wait: 1.8 },
-          { run: () => a.complete('MISSÃO CONCLUÍDA!', { from: 3, to: 2 }) },
+          // aparecem 2 opções
+          {
+            run: () => {
+              // escolha 1: empurrar (ajudar)
+              // escolha 2: ficar quieto (deixar cair)
+              const dialog = {
+                name: null, color: '#ffffff', lines: ['O Eri está na beirada...', 'O que você faz?'],
+                choices: [
+                  { text: 'Ei, você está na beirada!', onSelect: (a2) => {
+                      // caminho feliz
+                      a2.say({ text: '* Você avisa o Eri.', style: 'typed', dur: 2, size: 8, cps: 10, color: '#ffffff' });
+                      setTimeout(() => {
+                        a2.friendWalk(edge - 30, 40);
+                        a2.friendSay('Ah! Obrigado, Wrick!');
+                      }, 2100);
+                      setTimeout(() => a2.say({ text: '* O Eri deu um pulo de alegria!', style: 'typed', dur: 3, size: 8, cps: 10, color: '#ffd84a' }), 4500);
+                      setTimeout(() => a2.say({ text: '* Você se sente bem.', style: 'typed', dur: 2.5, size: 8, cps: 10, color: '#b8ff2e' }), 8000);
+                      setTimeout(() => a2.flag('eriSalvo', true), 11000);
+                      setTimeout(() => a2.flag('easterEggGaster', true), 11500);
+                      setTimeout(() => a2.complete('MISSÃO CONCLUÍDA!', { from: 3, to: 3 }), 12000);
+                    } },
+                  { text: 'Ficar quieto...', onSelect: (a2) => {
+                      // caminho triste
+                      a2.say({ text: '...', style: 'center', dur: 2, size: 8, color: '#ffffff' });
+                      setTimeout(() => a2.say({ text: 'Você não disse nada.', style: 'center', dur: 2, size: 8, color: '#ffffff' }), 2100);
+                      setTimeout(() => {
+                        // Eri cai
+                        const f = a2.friend;
+                        a2.friendLook('scared');
+                        f.x = edge + 2;
+                        a2.friendSay('AH!');
+                        a2.friendFall(30, () => {
+                          a2.sfx('crack'); a2.shake(0.3, 2);
+                          a2.friend.cracked = true;
+                          a2.burst(f.x + 6, f.y + 11, 14, ['#fff7e8', '#ffcf3a', '#ffffff'], 60);
+                        });
+                      }, 4200);
+                      setTimeout(() => a2.flag('eriMorto', true), 7000);
+                      setTimeout(() => {
+                        a2.seq([
+                          { wait: 2.5 },
+                          ...a2.laughSteps(1),
+                          { talk: ['stick', ['Ops.', 'Ele escorregou.']] },
+                          { wait: 0.6 },
+                          { fade: [1, 1.5] }, { wait: 1.8 },
+                          { run: () => a2.complete('MISSÃO CONCLUÍDA?', { from: 3, to: 2 }) },
+                        ], { blocking: true });
+                      }, 7200);
+                    } },
+                ],
+              };
+              a.dialog(dialog.name, dialog.lines, null, { color: dialog.color, choices: dialog.choices });
+            },
+          },
         ], { blocking: true });
       } },
     ],
   },
+
+  // ===== MISSÃO 2 — O FOGUETE DO ZOOM =====
   {
     name: 'O FOGUETE DO ZOOM', theme: 'launch', friend: 'zoom', item: 'gear', secrets: true,
     friendWait: 'ei, Wrick! aqui!',
@@ -216,8 +242,13 @@ const LEVELS = [
             ...a.laughSteps(2),
             { talk: ['stick', ['Ele queria ir sozinho.', 'Agora ele foi.']] },
             { wait: 0.6 },
-            { fade: [1, 1.5] }, { wait: 1.8 },
-            { run: () => a.complete('MISSÃO CONCLUÍDA!', { from: 2, to: 1 }) },
+            { run: () => a.flag('zoomMorto', true) },
+            // ===== BATALHA COM O ZOOM =====
+            { wait: 1.5 },
+            { run: () => { a.say({ text: '...', style: 'center', dur: 2, size: 8, color: '#ffffff' }); } },
+            { run: () => { a.say({ text: 'VOCÊ MATOU O PRIMO DELE.', style: 'flash', dur: 1.2, size: 8, color: '#ff3347' }); } },
+            { wait: 2.5 },
+            { run: () => { a.battle.startZoomBattle(a); } },
           ], { blocking: true });
         } },
     ],
@@ -243,6 +274,8 @@ const LEVELS = [
       { x: 86, run: (a) => a.say('sorrioPraEles') },
     ],
   },
+
+  // ===== MISSÃO 3 — A VILA DAS FRUTAS =====
   {
     name: 'A VILA DAS FRUTAS', theme: 'dusk', friend: 'torajo', item: 'berry', secrets: true,
     friendWait: 'Wrick?! não me deixa sozinho!',
@@ -327,11 +360,27 @@ const LEVELS = [
           { wait: 1.5 },
           { say: 'amoMeusAmigos' }, { wait: 2.8 },
           { say: 'odeioMeusAmigos' }, { wait: 3.8 },
-          { run: () => a.complete('MISSÃO CONCLUÍDA?', { from: 1, to: 0 }) },
+          // ===== EASTER EGG: SE MATOU ZOOM E ERI, TORAJO DÁ FLOWEY =====
+          { run: () => {
+            if (a.flag('zoomMorto') && a.flag('eriMorto')) {
+              a.say({ text: '* Você matou todos os seus amigos.', style: 'typed', dur: 3.5, size: 8, cps: 10, color: '#ff3347' });
+              setTimeout(() => a.say({ text: '* Só sobrou o Torajo.', style: 'typed', dur: 3, size: 8, cps: 10, color: '#ffffff' }), 4000);
+              setTimeout(() => a.say({ text: 'Torajo: Você matou eles.', style: 'center', dur: 3, size: 8, color: '#a6ec5a' }), 7500);
+              setTimeout(() => a.say({ text: 'Torajo: Você e eu...', style: 'center', dur: 3, size: 8, color: '#a6ec5a' }), 10800);
+              setTimeout(() => a.say({ text: 'Torajo: Dupla perfeita ou desequilibrada.', style: 'center', dur: 4, size: 8, color: '#a6ec5a' }), 14000);
+              setTimeout(() => a.say({ text: '* EASTER EGG DESBLOQUEADO: FLOWEY', style: 'typed', dur: 4, size: 8, cps: 8, color: '#ffd84a' }), 18500);
+              setTimeout(() => a.flag('easterEggFlowey', true), 23000);
+              setTimeout(() => a.complete('MISSÃO CONCLUÍDA?', { from: 1, to: 0 }), 23500);
+            } else {
+              setTimeout(() => a.complete('MISSÃO CONCLUÍDA?', { from: 1, to: 0 }), 100);
+            }
+          } },
         ], { blocking: true });
       } },
     ],
   },
+
+  // ===== DEPOIS — SOZINHO =====
   {
     name: 'SOZINHO', nameGlitch: 'E SEUS AMIGOS', label: 'DEPOIS', hudLabel: '...',
     theme: 'alone', secrets: true,
