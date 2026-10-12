@@ -8,8 +8,103 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* DEBUG: borda vermelha no canvas pra você ver ONDE ele tá */
+    #stage { min-height: 100vh; background: #202030; }
+    #game  { outline: 3px solid #ff3050; background: #103040; }
+    #diag  {
+      position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,.92); color: #0f0; font-family: monospace;
+      font-size: 11px; padding: 8px 12px; border-radius: 8px;
+      border: 2px solid #508cff; z-index: 2147483600;
+      max-width: 92vw; white-space: pre-wrap; line-height: 1.4; display: none;
+    }
+    #diag .bad { color: #ff4060; }
+    #diag .ok  { color: #4ac24a; }
+    #diagBtn  {
+      position: fixed; top: 8px; right: 8px; z-index: 2147483600;
+      background: #508cff; color: #000; border: none; border-radius: 8px;
+      padding: 6px 12px; font-family: monospace; font-weight: bold;
+      font-size: 12px; cursor: pointer;
+    }
+  </style>
 </head>
-<script src="mp.js"></script>
 <body>
+  <main id="stage">
+    <canvas id="game" width="320" height="180" aria-label="Stick e Seus Amigos"></canvas>
+  </main>
+
+  <button id="diagBtn">🔧 DIAGNÓSTICO</button>
+  <div id="diag"></div>
+
+  <div id="touch" aria-hidden="true">
+    <div class="pad">
+      <button data-key="TouchLeft">◀</button>
+      <button data-key="TouchRight">▶</button>
+    </div>
+    <div class="pad">
+      <button data-key="TouchInteract">E</button>
+      <button data-key="TouchJump" class="jump">▲</button>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="sprites.js"></script>
+  <script src="audio.js"></script>
+  <script src="messages.js"></script>
+  <script src="levels.js"></script>
+  <script src="world.js"></script>
+  <script src="game.js"></script>
+  <script src="mp.js"></script>
+
+  <script>
+  // ---- DIAGNÓSTICO NA TELA ----
+  const diag = document.getElementById('diag');
+  function log(msg, cls) { diag.innerHTML += (cls ? '<span class="' + cls + '">' + msg + '</span>' : msg) + '\n'; }
+
+  document.getElementById('diagBtn').onclick = () => {
+    diag.style.display = diag.style.display === 'block' ? 'none' : 'block';
+    if (diag.style.display !== 'block') return;
+    diag.innerHTML = '';
+    log('=== DIAGNÓSTICO ===');
+    log('script game.js: ' + (typeof StickDebug !== 'undefined' ? 'OK' : 'FALHOU'), typeof StickDebug !== 'undefined' ? 'ok' : 'bad');
+    log('StickDebug.G: ' + (typeof StickDebug !== 'undefined' && StickDebug.G ? 'OK' : 'FALHOU'), typeof StickDebug !== 'undefined' && StickDebug.G ? 'ok' : 'bad');
+    log('CONFIG: ' + (typeof CONFIG !== 'undefined' ? 'OK' : 'FALHOU'), typeof CONFIG !== 'undefined' ? 'ok' : 'bad');
+    log('LEVELS: ' + (typeof LEVELS !== 'undefined' ? 'OK' : 'FALHOU'), typeof LEVELS !== 'undefined' ? 'ok' : 'bad');
+    log('THEMES: ' + (typeof THEMES !== 'undefined' ? 'OK' : 'FALHOU'), typeof THEMES !== 'undefined' ? 'ok' : 'bad');
+    log('MESSAGES: ' + (typeof MESSAGES !== 'undefined' ? 'OK' : 'FALHOU'), typeof MESSAGES !== 'undefined' ? 'ok' : 'bad');
+    log('World: ' + (typeof World !== 'undefined' ? 'OK' : 'FALHOU'), typeof World !== 'undefined' ? 'ok' : 'bad');
+    log('Sprites: ' + (typeof Sprites !== 'undefined' ? 'OK' : 'FALHOU'), typeof Sprites !== 'undefined' ? 'ok' : 'bad');
+    const c = document.getElementById('game');
+    if (c) {
+      log('canvas existe: OK (' + c.width + 'x' + c.height + ')', 'ok');
+      const r = c.getBoundingClientRect();
+      log('canvas na tela: ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' em (' + Math.round(r.left) + ',' + Math.round(r.top) + ')',
+        (r.width > 0 && r.height > 0) ? 'ok' : 'bad');
+      try {
+        const ctx = c.getContext('2d');
+        const px = ctx.getImageData(Math.floor(c.width/2), Math.floor(c.height/2), 1, 1).data;
+        log('pixel central: rgba(' + px[0] + ',' + px[1] + ',' + px[2] + ',' + px[3] + ')');
+      } catch(e) { log('não consegui ler pixels: ' + e.message, 'bad'); }
+    } else {
+      log('canvas NÃO existe!', 'bad');
+    }
+    if (typeof StickDebug !== 'undefined' && StickDebug.G) {
+      const G = StickDebug.G;
+      log('G.state: ' + G.state);
+      log('G.levelIndex: ' + G.levelIndex);
+      log('G.world: ' + (G.world ? 'OK' : 'null'), G.world ? 'ok' : 'bad');
+      log('G.theme: ' + (G.theme ? 'OK' : 'null'), G.theme ? 'ok' : 'bad');
+      log('G.player: ' + (G.player ? 'OK' : 'null'), G.player ? 'ok' : 'bad');
+    }
+  };
+
+  // auto-abrir se algo estiver errado
+  setTimeout(() => {
+    if (typeof StickDebug === 'undefined') {
+      document.getElementById('diagBtn').click();
+    }
+  }, 3000);
+  </script>
 </body>
 </html>
