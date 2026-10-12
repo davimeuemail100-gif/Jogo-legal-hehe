@@ -23,6 +23,7 @@ const MP={
   remote:{},entities:{},avatar:{...DEFAULT_AVATAR},
   started:false,overlay:null,
   friends:{},friendChat:{},friendOnline:{},
+  unread:{},lastRead:{},
 };
 
 const s=document.createElement('style');
@@ -50,6 +51,8 @@ s.textContent=`
 #mpo .frItem .dot{width:10px;height:10px;border-radius:50%;background:#666}
 #mpo .frItem .dot.on{background:#4ac24a;box-shadow:0 0 6px #4ac24a}
 #mpo .frItem .dot.off{background:#666}
+#mpo .frItem .badge{background:#ff3347;color:#fff;font-size:10px;font-weight:bold;padding:2px 7px;border-radius:10px;margin-left:6px;box-shadow:0 0 8px #ff3347;animation:pls 1s ease-in-out infinite;display:inline-block}
+@keyframes pls{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 .modeRow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:6px 0}
 .modeBox{padding:8px;border-radius:8px;border:2px solid #333;background:#0d0a12;color:#eee;text-align:center;cursor:pointer;font-size:10px}
 .modeBox.on{background:#222;color:#fff}
@@ -69,22 +72,21 @@ s.textContent=`
 .skinCard.locked{opacity:0.35;cursor:not-allowed}
 .skinCard .sn{font-weight:bold;font-size:12px;margin-bottom:2px}
 .skinCard .sd{font-size:9px;color:#8a8a9a}
-
 #mpHud{position:fixed;top:6px;left:6px;background:rgba(10,8,15,.85);border:1px solid #4a2a6a;border-radius:6px;padding:4px 8px;font-family:monospace;font-size:10px;color:#ccc;z-index:999996;line-height:1.4;max-width:60vw;pointer-events:none}
 #mpHud b{color:#b8ff2e}
 #mpHud .adm{color:#ffd84a}
 #mpHud .turn{color:#b8ff2e;font-weight:bold}
 #mpHud .mH{color:#ff3347}#mpHud .mN{color:#508cff}#mpHud .mP{color:#4ac24a}
-
-#mpMenuBtn{position:fixed;top:6px;right:6px;width:38px;height:38px;background:rgba(20,16,26,.92);color:#fff;border:2px solid #508cff;border-radius:8px;font-size:20px;cursor:pointer;z-index:999997;display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+#mpMenuBtn{position:fixed;top:6px;right:6px;width:38px;height:38px;background:rgba(20,16,26,.92);color:#fff;border:2px solid #508cff;border-radius:8px;font-size:20px;cursor:pointer;z-index:999997;display:flex;align-items:center;justify-content:center;touch-action:manipulation;position:relative}
 #mpMenuBtn:active{background:#508cff;color:#000}
+#mpMenuBtn .dotBadge{position:absolute;top:-4px;right:-4px;background:#ff3347;color:#fff;font-size:10px;font-weight:bold;padding:1px 6px;border-radius:10px;box-shadow:0 0 8px #ff3347;animation:pls 1s ease-in-out infinite}
 #mpMenu{position:fixed;top:50px;right:6px;background:rgba(20,16,26,.98);border:2px solid #508cff;border-radius:10px;padding:6px;z-index:999997;width:220px;box-shadow:0 4px 20px rgba(0,0,0,.6);display:none;flex-direction:column;gap:4px}
 #mpMenu.open{display:flex}
-#mpMenu button{width:100%;padding:8px 10px;background:#1e1e2a;color:#fff;border:1px solid #3a3a4a;border-radius:6px;font-family:monospace;font-size:11px;font-weight:bold;cursor:pointer;text-align:left;touch-action:manipulation}
+#mpMenu button{width:100%;padding:8px 10px;background:#1e1e2a;color:#fff;border:1px solid #3a3a4a;border-radius:6px;font-family:monospace;font-size:11px;font-weight:bold;cursor:pointer;text-align:left;touch-action:manipulation;position:relative}
 #mpMenu button:active{background:#508cff;color:#000}
 #mpMenu button.danger{background:#402030;border-color:#803040;color:#ff8a8a}
 #mpMenu button.admin{background:#4a3a10;border-color:#a08020;color:#ffd84a}
-
+#mpMenu button .badge{background:#ff3347;color:#fff;font-size:10px;font-weight:bold;padding:1px 6px;border-radius:10px;margin-left:6px;box-shadow:0 0 8px #ff3347;animation:pls 1s ease-in-out infinite;float:right}
 #mpChat{position:fixed;top:50px;right:6px;width:min(90vw,340px);max-height:50vh;overflow-y:auto;background:rgba(10,8,15,.96);border:2px solid #4a2a6a;border-radius:10px;padding:8px 10px;font-family:monospace;font-size:11px;color:#ccc;z-index:999998;display:none;flex-direction:column;gap:4px;box-shadow:0 4px 20px rgba(0,0,0,.6)}
 #mpChat.open{display:flex}
 #mpChat .m{margin:1px 0;word-wrap:break-word;line-height:1.35}
@@ -95,7 +97,6 @@ s.textContent=`
 #mpChatInputWrap input{flex:1;padding:8px;background:#0d0a12;color:#fff;border:1px solid #4a2a6a;border-radius:6px;font-family:monospace;font-size:12px;min-width:0}
 #mpChatInputWrap button{padding:8px 12px;background:#8a2be2;color:#fff;border:none;border-radius:6px;font-family:monospace;font-weight:bold;cursor:pointer;font-size:12px}
 #mpChatInputWrap button.closeChat{background:#402030}
-
 #mpEntInput{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);width:min(90vw,420px);background:rgba(10,5,15,.98);border:2px solid #ff6a9c;border-radius:12px;padding:10px;z-index:2147483002;display:none;flex-direction:column;gap:6px;box-shadow:0 0 30px rgba(255,106,156,.4);font-family:monospace}
 #mpEntInput.open{display:flex}
 #mpEntInput .who{color:#ff6a9c;font-size:12px;font-weight:bold}
@@ -105,16 +106,12 @@ s.textContent=`
 #mpEntInput button.cancel{background:#402030;color:#ff8a8a}
 #mpEntReply{color:#fff;font-size:12px;line-height:1.4;padding:6px;background:rgba(255,106,156,.1);border-radius:6px;border-left:3px solid #ff6a9c;display:none}
 #mpEntReply.show{display:block}
-
 #mpOverlay{position:fixed;pointer-events:none;z-index:999994;image-rendering:pixelated;image-rendering:crisp-edges}
-
 .mpEnt{position:fixed;transform:translate(-50%,-100%);text-align:center;font-family:monospace;font-size:9px;font-weight:bold;color:#ff6a9c;text-shadow:0 0 5px #ff006a;z-index:999995;cursor:pointer;user-select:none;touch-action:manipulation}
 .mpEnt .blob{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%, #2a0f3a, #050208 70%);border:2px solid #3a1f4a;margin:0 auto 2px;animation:mpB 2s ease-in-out infinite}
 .mpEnt.eye .blob{background:radial-gradient(circle at 50% 50%, #ff3347 8%, #1a0508 70%)}
 .mpEnt.shadow .blob{background:#0a0508;border-color:#000}
 @keyframes mpB{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-
-#mpAdmBtn{position:fixed;top:6px;left:50%;transform:translateX(-50%);background:#ffd84a;color:#1a1a1a;border:none;padding:6px 14px;border-radius:8px;font-family:monospace;font-weight:bold;cursor:pointer;z-index:999999;font-size:12px}
 #mpAdm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(94vw,440px);max-height:86vh;overflow-y:auto;background:#14101a;border:2px solid #ffd84a;border-radius:12px;padding:14px;color:#eee;font-family:monospace;font-size:12px;z-index:2147483001;box-sizing:border-box}
 #mpAdm h2{margin:0 0 10px;color:#ffd84a;font-size:13px;text-align:center}
 #mpAdm h3{margin:12px 0 6px;color:#b8ff2e;font-size:11px;border-bottom:1px solid #333;padding-bottom:3px}
@@ -125,7 +122,6 @@ s.textContent=`
 #mpAdm .st{color:#0f0;font-size:10px;min-height:14px;text-align:center;margin-top:6px}
 #mpAdm .danger{background:#a02030}
 #mpAdm .ok{background:#4ac24a;color:#0a1a0a}
-
 #mpJump{position:fixed;inset:0;background:#000;z-index:2147483647;display:flex;align-items:center;justify-content:center;color:#ff2030;font-family:monospace;font-size:90px;font-weight:bold;pointer-events:none;animation:mpJ .45s ease-out}
 @keyframes mpJ{0%{opacity:0;transform:scale(.5)}30%{opacity:1;transform:scale(1.2)}100%{opacity:0;transform:scale(1)}}
 `;
@@ -161,13 +157,13 @@ function loadAvatar(){
     if(n)MP.nick=n;
     const f=localStorage.getItem('wrick_friends');
     if(f)MP.friends=JSON.parse(f);
-    const fc=localStorage.getItem('wrick_friendchat');
-    if(fc)MP.friendChat=JSON.parse(fc);
+    const lr=localStorage.getItem('wrick_lastread');
+    if(lr)MP.lastRead=JSON.parse(lr);
   }catch(e){}
 }
 function saveAvatar(){try{localStorage.setItem('wrick_avatar',JSON.stringify(MP.avatar));}catch(e){}}
 function saveFriends(){try{localStorage.setItem('wrick_friends',JSON.stringify(MP.friends));}catch(e){}}
-function saveFriendChat(){try{localStorage.setItem('wrick_friendchat',JSON.stringify(MP.friendChat));}catch(e){}}
+function saveLastRead(){try{localStorage.setItem('wrick_lastread',JSON.stringify(MP.lastRead));}catch(e){}}
 
 function shadeLocal(hex,amt){
   const n=parseInt(hex.slice(1),16);
@@ -232,9 +228,9 @@ function loginScreen(){
   o.querySelector('#mpoAv').onclick=()=>avatarScreen(()=>loginScreen());
   const tentar=()=>{
     const nick=inp.value.trim();
-    if(!nick||nick.length<2){err.textContent='⚠ nick muito curto';return;}
-    if(nick.length>NICK_MAX){err.textContent='⚠ nick muito longo';return;}
-    if(!/^[\wÀ-ÿ\-_. ]{2,24}$/.test(nick)){err.textContent='⚠ invalido';return;}
+    if(!nick||nick.length<2){err.textContent='nick muito curto';return;}
+    if(nick.length>NICK_MAX){err.textContent='nick muito longo';return;}
+    if(!/^[\wÀ-ÿ\-_. ]{2,24}$/.test(nick)){err.textContent='invalido';return;}
     MP.nick=nick;
     try{localStorage.setItem('wrick_nick',nick);}catch(e){}
     closeAll();
@@ -295,9 +291,7 @@ function avatarScreen(back){
       grid.appendChild(card);
     });
   };
-  renderPrev();
-  renderSw();
-  renderSkins();
+  renderPrev();renderSw();renderSkins();
   o.querySelector('#avOk').onclick=()=>{
     applyAvatar(MP.avatar);
     closeAll();
@@ -351,7 +345,7 @@ async function lobbyScreen(){
   async function joinRoom(roomId){
     err.textContent='entrando...';
     const r=await api('joinRoom',{roomId,avatar:MP.avatar});
-    if(!r.ok){err.textContent='⚠ '+(r.reason||'erro');return;}
+    if(!r.ok){err.textContent='erro: '+(r.reason||'');return;}
     MP.roomId=r.roomId;
     MP.room=r.room;
     closeAll();
@@ -397,7 +391,7 @@ function createRoomScreen(){
     const maxPlayers=Math.max(2,Math.min(200,+o.querySelector('#crMax').value||20));
     err.textContent='criando...';
     const r=await api('createRoom',{roomName,maxPlayers,avatar:MP.avatar,gameMode:selMode});
-    if(!r.ok){err.textContent='⚠ '+(r.reason||'erro');return;}
+    if(!r.ok){err.textContent='erro: '+(r.reason||'');return;}
     MP.roomId=r.roomId;
     MP.room=r.room;
     closeAll();
@@ -425,7 +419,45 @@ function modeScreen(){
   o.querySelector('#mpoExit').onclick=async()=>{await api('leaveRoom');MP.roomId=null;MP.room=null;lobbyScreen();};
 }
 
-function friendsScreen(){
+async function fetchUnread(){
+  try{
+    const r=await fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'getAllFriendMsgs',nick:MP.nick})}).then(x=>x.json());
+    if(!r.ok)return;
+    let total=0;
+    for(const friend in r.msgs){
+      const msgs=r.msgs[friend];
+      if(!msgs||!msgs.length)continue;
+      const readT=MP.lastRead[friend]||0;
+      const unread=msgs.filter(m=>m.from!==MP.nick && m.t>readT).length;
+      MP.unread[friend]=unread;
+      total+=unread;
+    }
+    updateBadge(total);
+  }catch(e){}
+  setTimeout(fetchUnread,3000);
+}
+
+function updateBadge(total){
+  const btn=document.getElementById('mpMenuBtn');
+  const menuBtn=document.getElementById('mmFr');
+  if(btn){
+    let b=btn.querySelector('.dotBadge');
+    if(total>0){
+      if(!b){b=$('div',{class:'dotBadge'});btn.appendChild(b);}
+      b.textContent=total>9?'9+':total;
+    }else if(b){b.remove();}
+  }
+  if(menuBtn){
+    let b=menuBtn.querySelector('.badge');
+    if(total>0){
+      if(!b){b=$('span',{class:'badge'});menuBtn.appendChild(b);}
+      b.textContent=total;
+    }else if(b){b.remove();}
+  }
+}
+
+async function friendsScreen(){
   closeAll();
   const o=$('div',{id:'mpo'});
   o.innerHTML=`<div class="c">
@@ -442,33 +474,19 @@ function friendsScreen(){
 
   async function render(){
     if(!names.length){frList.innerHTML='<p>voce nao tem amigos ainda</p>';return;}
-    frList.innerHTML='';
     for(const n of names){
-      const el=$('div',{class:'frItem'});
-      const online=MP.friendOnline[n];
-      el.innerHTML=`<div class="info" style="text-align:left;flex:1">
-<div class="fN">${n}</div>
-<div class="fS">${online?'Online':'Offline'}</div>
-</div>
-<div class="dot ${online?'on':'off'}"></div>`;
-      el.onclick=()=>{if(!online){err.textContent='a pessoa nao esta jogando';return;}closeAll();openFriendChat(n);};
-      frList.appendChild(el);
+      try{
+        const r=await fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'checkOnline',nick:n})}).then(x=>x.json());
+        MP.friendOnline[n]=!!(r.ok&&r.online);
+      }catch(e){MP.friendOnline[n]=false;}
     }
-    const checkAll=async()=>{
-      for(const n of names){
-        try{
-          const r=await fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'checkOnline',nick:n})}).then(x=>x.json());
-          MP.friendOnline[n]=!!(r.ok&&r.online);
-        }catch(e){MP.friendOnline[n]=false;}
-      }
-    };
-    await checkAll();
     frList.innerHTML='';
     for(const n of names){
       const el=$('div',{class:'frItem'});
       const online=MP.friendOnline[n];
+      const unread=MP.unread[n]||0;
       el.innerHTML=`<div class="info" style="text-align:left;flex:1">
-<div class="fN">${n}</div>
+<div class="fN">${n}${unread>0?'<span class="badge">'+unread+'</span>':''}</div>
 <div class="fS">${online?'Online':'Offline'}</div>
 </div>
 <div class="dot ${online?'on':'off'}"></div>`;
@@ -495,10 +513,13 @@ function friendsScreen(){
 
 function openFriendChat(friend){
   closeAll();
+  MP.lastRead[friend]=Date.now();
+  saveLastRead();
+  MP.unread[friend]=0;
   const o=$('div',{id:'mpo'});
   o.innerHTML=`<div class="c">
 <h1>Chat com ${friend}</h1>
-<div id="fcMsgs" style="background:#0d0a12;border-radius:8px;padding:8px;min-height:180px;max-height:280px;overflow-y:auto;font-size:11px"></div>
+<div id="fcMsgs" style="background:#0d0a12;border-radius:8px;padding:8px;min-height:200px;max-height:300px;overflow-y:auto;font-size:11px"></div>
 <div style="display:flex;gap:4px;margin-top:6px">
 <input id="fcTxt" placeholder="mensagem..." maxlength="200" style="flex:1;padding:8px;background:#0d0a12;color:#fff;border:1px solid #4a2a6a;border-radius:8px;font-family:inherit;font-size:12px;box-sizing:border-box">
 <button id="fcSend" style="padding:8px 14px;background:#8a2be2;color:#fff;border:none;border-radius:8px;font-family:inherit;font-weight:bold;cursor:pointer;width:auto;margin:0">ENVIAR</button>
@@ -508,7 +529,7 @@ function openFriendChat(friend){
   document.body.appendChild(o);
   const msgs=o.querySelector('#fcMsgs');
   const inp=o.querySelector('#fcTxt');
-  let lastMsgCount = 0;
+  let lastCount=0;
 
   function renderMsgs(list){
     msgs.innerHTML='';
@@ -519,8 +540,8 @@ function openFriendChat(friend){
     list.forEach(m=>{
       const d=$('div');
       d.style.margin='3px 0';
-      d.style.color = m.from === MP.nick ? '#b8ff2e' : '#8ad8ff';
-      d.textContent = (m.from === MP.nick ? 'Você: ' : m.from + ': ') + m.text;
+      d.style.color=m.from===MP.nick?'#b8ff2e':'#8ad8ff';
+      d.textContent=(m.from===MP.nick?'Você: ':m.from+': ')+m.text;
       msgs.appendChild(d);
     });
     msgs.scrollTop=msgs.scrollHeight;
@@ -531,9 +552,11 @@ function openFriendChat(friend){
     try{
       const r=await fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({action:'getFriendMsgs',nick:MP.nick,to:friend})}).then(x=>x.json());
-      if(r.ok && r.msgs.length !== lastMsgCount){
-        lastMsgCount = r.msgs.length;
+      if(r.ok && r.msgs.length!==lastCount){
+        lastCount=r.msgs.length;
         renderMsgs(r.msgs);
+        MP.lastRead[friend]=Date.now();
+        saveLastRead();
       }
     }catch(e){}
     if(document.getElementById('fcMsgs'))setTimeout(carregar,2000);
@@ -550,25 +573,6 @@ function openFriendChat(friend){
   };
   o.querySelector('#fcSend').onclick=enviar;
   inp.onkeydown=e=>{if(e.key==='Enter')enviar();};
-
-  o.querySelector('#fcBack').onclick=()=>{closeAll();friendsScreen();};
-}
-  renderChat();
-  o.querySelector('#fcSend').onclick=()=>{
-    const t=o.querySelector('#fcTxt').value.trim();
-    if(!t)return;
-    chat.push({me:true,text:t});
-    MP.friendChat[friend]=chat;
-    saveFriendChat();
-    o.querySelector('#fcTxt').value='';
-    renderChat();
-    setTimeout(()=>{
-      const replies=['oi!','kkk','beleza','to jogando','vamo','serio?','kkkkk','manda','ok','depois eu falo'];
-      chat.push({me:false,text:replies[(Math.random()*replies.length)|0]});
-      saveFriendChat();
-      renderChat();
-    },900);
-  };
   o.querySelector('#fcBack').onclick=()=>{closeAll();friendsScreen();};
 }
 
@@ -577,18 +581,15 @@ function start(){
   MP.started=true;
   applyAvatar(MP.avatar);
   closeAll();
-
   const h=$('div',{id:'mpHud'});
   document.body.appendChild(h);
   MP.turnEl=h;
-
   const ov=$('canvas',{id:'mpOverlay'});
   ov.width=320;
   ov.height=180;
   document.body.appendChild(ov);
   MP.overlay=ov;
   MP.overlayCtx=ov.getContext('2d');
-
   const btn=$('button',{id:'mpMenuBtn'});
   btn.textContent='☰';
   btn.onclick=(e)=>{
@@ -601,7 +602,6 @@ function start(){
     }
   };
   document.body.appendChild(btn);
-
   const menu=$('div',{id:'mpMenu'});
   menu.innerHTML=`
 <button id="mmAv">Trocar avatar</button>
@@ -610,7 +610,6 @@ function start(){
 <button id="mmStudio">Studio</button>
 <button id="mmExit" class="danger">Sair da sala</button>`;
   document.body.appendChild(menu);
-
   const chat=$('div',{id:'mpChat'});
   chat.innerHTML=`<div id="mpChatMsgs"></div>
 <div id="mpChatInputWrap">
@@ -631,7 +630,6 @@ function start(){
   chat.querySelector('#mpSend').onclick=enviar;
   chat.querySelector('#mpChatClose').onclick=()=>{chat.classList.remove('open');menu.classList.remove('open');};
   txt.onkeydown=e=>{if(e.key==='Enter')enviar();};
-
   menu.querySelector('#mmAv').onclick=()=>{menu.classList.remove('open');avatarScreen(()=>{api('setAvatar',{avatar:MP.avatar});});};
   menu.querySelector('#mmFr').onclick=()=>{menu.classList.remove('open');friendsScreen();};
   menu.querySelector('#mmChat').onclick=()=>{
@@ -641,7 +639,6 @@ function start(){
   };
   menu.querySelector('#mmStudio').onclick=()=>{window.location.href='/studio.html';};
   menu.querySelector('#mmExit').onclick=async()=>{await api('leaveRoom');MP.roomId=null;MP.room=null;MP.started=false;location.reload();};
-
   if(MP.nick===ADMIN_NICK){
     MP.isAdmin=true;
     const ab=$('button',{id:'mmAdmin',class:'admin'});
@@ -649,7 +646,6 @@ function start(){
     ab.onclick=()=>{menu.classList.remove('open');openAdmin();};
     menu.insertBefore(ab,menu.firstChild);
   }
-
   const ei=$('div',{id:'mpEntInput'});
   ei.innerHTML=`<div class="who" id="mpEntWho"></div>
 <div id="mpEntReply"></div>
@@ -683,17 +679,15 @@ function start(){
   };
   ei.querySelector('#mpEntSend').onclick=entSend;
   entTxt.onkeydown=e=>{if(e.key==='Enter')entSend();};
-
   document.addEventListener('click',(e)=>{
     const m=document.getElementById('mpMenu');
     const b=document.getElementById('mpMenuBtn');
     if(m&&m.classList.contains('open')&&!m.contains(e.target)&&!b.contains(e.target))m.classList.remove('open');
   });
-
   pollLoop();
   moveLoop();
   renderLoop();
-
+  fetchUnread();
   window.addEventListener('beforeunload',()=>{
     try{navigator.sendBeacon('/api/game',JSON.stringify({action:'leaveRoom',nick:MP.nick,hwid:MY_HWID,roomId:MP.roomId}));}catch(e){}
   });
@@ -762,7 +756,7 @@ function openAdmin(){
     const t=o.querySelector('#mpAdmBroadcast').value.trim();
     if(!t)return;
     const r=await api('broadcast',{text:t});
-    setSt(r.ok?'mensagem enviada':'erro');
+    setSt(r.ok?'enviada':'erro');
   };
   o.querySelector('#mpAdmTaco').onclick=async()=>{
     const r=await api('tacoRain',{});
@@ -776,7 +770,7 @@ function openAdmin(){
     const n=o.querySelector('#mpAdmTarget').value.trim();
     if(!n)return;
     const r=await api('giveAdmin',{nick:n});
-    setSt(r.ok?n+' e admin':'erro '+(r.reason||''));
+    setSt(r.ok?n+' e admin':'erro');
   };
   o.querySelector('#mpAdmFreeze').onclick=async()=>{
     const n=o.querySelector('#mpAdmTarget').value.trim();
@@ -858,9 +852,7 @@ function syncRemote(room){
       r={x:p.x,y:p.y,face:p.face,avatar:p.avatar,lastX:p.x,lastY:p.y,anim:0,moving:0};
       MP.remote[nick]=r;
     }
-    r.x=p.x;
-    r.y=p.y;
-    r.face=p.face;
+    r.x=p.x;r.y=p.y;r.face=p.face;
     r.avatar=p.avatar||DEFAULT_AVATAR;
     r.frozen=p.frozen;
     r.weapon=p.hasWeapon;
@@ -880,9 +872,7 @@ function syncEntities(room){
       document.body.appendChild(el);
       MP.entities[e.id]=el;
     }
-    el._x=e.x;
-    el._y=e.y;
-    el._id=e.id;
+    el._x=e.x;el._y=e.y;el._id=e.id;
   });
   for(const id in MP.entities)if(!used[id]){MP.entities[id].remove();delete MP.entities[id];}
 }
@@ -950,21 +940,16 @@ function renderLoop(){
       const moving=dx>0.4||dy>0.4;
       if(moving){r.moving=12;r.anim+=0.15;}
       else if(r.moving>0)r.moving--;
-      r.lastX=r.x;
-      r.lastY=r.y;
+      r.lastX=r.x;r.lastY=r.y;
       let frame='idle';
       if(r.moving>0)frame=['walk1','walk2','walk3','walk2'][Math.floor(r.anim)%4];
       const recolor={
         h:a.hair==='RAINBOW'?'#ff2030':a.hair,
         H:shadeLocal(a.hair==='RAINBOW'?'#ff2030':a.hair,-0.25),
-        s:a.skin,
-        S:shadeLocal(a.skin,-0.15),
-        g:a.shirt,
-        G:shadeLocal(a.shirt,-0.2),
-        p:a.pants,
-        P:shadeLocal(a.pants,-0.25),
-        t:a.shoes,
-        e:a.eyes,
+        s:a.skin,S:shadeLocal(a.skin,-0.15),
+        g:a.shirt,G:shadeLocal(a.shirt,-0.2),
+        p:a.pants,P:shadeLocal(a.pants,-0.25),
+        t:a.shoes,e:a.eyes,
       };
       let img;
       try{img=Sprites.get('player',frame,recolor);}catch(e){continue;}
@@ -975,14 +960,8 @@ function renderLoop(){
       ctx.scale(r.face<0?-1:1,1);
       ctx.drawImage(img,-6,-8);
       ctx.restore();
-      if(r.frozen){
-        ctx.fillStyle='#8ad8ff';
-        ctx.fillRect(px,py-3,12,2);
-      }
-      if(r.weapon){
-        ctx.fillStyle='#c4c8d4';
-        ctx.fillRect(px+(r.face<0?-8:12),py+3,6,2);
-      }
+      if(r.frozen){ctx.fillStyle='#8ad8ff';ctx.fillRect(px,py-3,12,2);}
+      if(r.weapon){ctx.fillStyle='#c4c8d4';ctx.fillRect(px+(r.face<0?-8:12),py+3,6,2);}
       ctx.font='6px monospace';
       ctx.textAlign='center';
       ctx.textBaseline='bottom';
