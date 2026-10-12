@@ -3,6 +3,7 @@
   const $ = (t, p) => { const e = document.createElement(t); if (p) for (const k in p) e.setAttribute(k, p[k]); return e; };
 
   const NICK_MAX = 24;
+  const ADMIN_NICK = 'SeversPrevadeFedora'; // só esse nick vê o painel
 
   const DEFAULT_AVATAR = {
     skin: '#ffffff', hair: 'RAINBOW', shirt: '#8b5a2b',
@@ -22,124 +23,111 @@
     roomId: null, room: null, lastV: -1,
     avatars: {}, entities: {}, avatar: { ...DEFAULT_AVATAR },
     turnEl: null, chatBar: null, liveEl: null, liveSig: null,
+    started: false,
   };
 
+  // ===== CSS =====
   const s = document.createElement('style');
   s.textContent = `
-    #mpo { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-      background:rgba(4,2,8,.97); z-index:2147483000; font-family:monospace; color:#eee; overflow-y:auto; padding:20px; box-sizing:border-box }
-    #mpo .c { background:#141018; border:2px solid #8a2be2; border-radius:14px; padding:18px;
-      width:min(94vw,420px); box-shadow:0 0 30px rgba(138,43,226,.6); max-height:90vh; overflow-y:auto; box-sizing:border-box }
-    #mpo h1 { font-size:17px; margin:0 0 12px; color:#b8ff2e; letter-spacing:2px; text-align:center }
-    #mpo p { font-size:12px; color:#b0a8c0; margin:4px 0; text-align:center }
-    #mpo input, #mpo select { width:100%; padding:10px; margin:5px 0; background:#0d0a12; color:#fff;
-      border:1px solid #4a2a6a; border-radius:8px; font-family:inherit; font-size:13px; box-sizing:border-box }
-    #mpo button { width:100%; padding:10px; margin:4px 0; background:#8a2be2; color:#fff;
-      border:none; border-radius:8px; font-family:inherit; font-size:12px; cursor:pointer; font-weight:bold }
-    #mpo button:hover { background:#a04ef0 }
-    #mpo button.sec { background:#333 }
-    #mpo button.sec:hover { background:#444 }
-    #mpo .err { color:#ff5570; font-size:12px; text-align:center; min-height:16px; margin-top:6px }
-    #mpo .room { background:#0d0a12; border:1px solid #4a2a6a; border-radius:8px;
-      padding:8px; margin:5px 0; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:6px }
-    #mpo .room:hover { background:#1a0f26; border-color:#8a2be2 }
-    #mpo .room .info { text-align:left; flex:1; min-width:0 }
-    #mpo .room .nm { color:#b8ff2e; font-weight:bold; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-    #mpo .room .meta { font-size:10px; color:#8a8a9a; margin-top:2px }
-    #mpo .room .cnt { background:#8a2be2; color:#fff; border-radius:6px; padding:4px 8px; font-size:11px; font-weight:bold; white-space:nowrap }
-    #mpo .room .cnt.full { background:#c0203a }
-    #mpo .room .live { color:#ff3347; font-weight:bold }
-
-    .avPrev { width:100%; height:100px; display:flex; align-items:center; justify-content:center;
-      background:#0d0a12; border-radius:10px; margin-bottom:10px }
-    .avPrev canvas { image-rendering:pixelated; width:72px; height:96px }
-    .avRow { display:flex; align-items:center; gap:8px; margin:6px 0 }
-    .avRow > span { font-size:11px; color:#b0a8c0; width:60px; text-align:right; flex-shrink:0 }
-    .avRow .sw { flex:1; display:flex; gap:4px; flex-wrap:wrap }
-    .avRow .sw button { width:22px; height:22px; padding:0; margin:0; border-radius:4px;
-      border:2px solid #333; cursor:pointer; background:#000 }
-    .avRow .sw button.sel { border-color:#b8ff2e; box-shadow:0 0 6px #b8ff2e }
-    .avRow .sw button[data-c="RAINBOW"] { background:linear-gradient(90deg,#ff0000,#ffcc00,#00ff00,#00d4ff,#8a2be2,#ff0000) }
-
-    #mpHud { position:fixed; top:8px; left:8px; background:rgba(10,8,15,.86);
-      border:1px solid #4a2a6a; border-radius:8px; padding:6px 10px; font-family:monospace;
-      font-size:11px; color:#fff; z-index:999998; line-height:1.45; max-width:60vw }
-    #mpHud .adm { color:#ffd84a } #mpHud .turn { color:#b8ff2e } #mpHud .me { color:#ff6a9c }
-
-    #mpChat { position:fixed; left:8px; bottom:88px; width:min(76vw,340px); max-height:180px;
-      overflow-y:auto; background:rgba(10,8,15,.9); border:1px solid #4a2a6a;
-      border-radius:10px; padding:6px; font-family:monospace; font-size:11px; color:#ddd; z-index:999998 }
-    #mpChat .m { margin:3px 0; word-wrap:break-word } #mpChat .me { color:#b8ff2e }
-    #mpChat .sys { color:#8a8a9a; font-style:italic } #mpChat .ent { color:#ff6a9c; text-shadow:0 0 5px #ff006a }
-
-    #mpIn { position:fixed; left:8px; bottom:58px; width:min(76vw,340px); display:flex; gap:4px; z-index:999998 }
-    #mpIn input { flex:1; padding:8px; background:rgba(10,8,15,.92); color:#fff;
-      border:1px solid #4a2a6a; border-radius:8px; font-family:monospace; font-size:12px; min-width:0 }
-    #mpIn button { padding:8px 12px; background:#8a2be2; color:#fff; border:none; border-radius:8px;
-      font-family:monospace; font-weight:bold; cursor:pointer; width:auto; flex-shrink:0 }
-    #mpIn.off { opacity:.4; pointer-events:none }
-
-    .mpAv { position:fixed; transform:translate(-50%,-100%); text-align:center;
-      font-family:monospace; font-size:10px; font-weight:bold; color:#fff;
-      text-shadow:0 0 4px #000,0 0 4px #000; z-index:999997; pointer-events:none }
-    .mpAv .body { width:18px; height:22px; margin:0 auto 2px; border-radius:4px;
-      position:relative; border:1px solid #000; box-shadow:0 0 6px rgba(255,255,255,.35) }
-    .mpAv .head { position:absolute; top:-7px; left:50%; transform:translateX(-50%);
-      width:10px; height:10px; border-radius:50%; border:1px solid #000 }
-    .mpAv .eye { position:absolute; top:3px; width:2px; height:2px; border-radius:50% }
-    .mpAv .eye.l { left:2px } .mpAv .eye.r { right:2px }
-
-    .mpEnt { position:fixed; transform:translate(-50%,-100%); text-align:center;
-      font-family:monospace; font-size:10px; font-weight:bold; color:#ff6a9c;
-      text-shadow:0 0 6px #ff006a; z-index:999997; cursor:pointer; user-select:none }
-    .mpEnt .blob { width:34px; height:34px; border-radius:50%;
-      background:radial-gradient(circle at 40% 35%, #2a0f3a, #050208 70%);
-      border:2px solid #3a1f4a; margin:0 auto 2px; animation:mpB 2s ease-in-out infinite }
-    .mpEnt.eye .blob { background:radial-gradient(circle at 50% 50%, #ff3347 8%, #1a0508 70%) }
-    .mpEnt.shadow .blob { background:#0a0508; border-color:#000 }
-    @keyframes mpB { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
-
-    #mpAdmBtn { position:fixed; top:8px; left:50%; transform:translateX(-50%);
-      background:#ffd84a; color:#1a1a1a; border:none; padding:6px 14px; border-radius:8px;
-      font-family:monospace; font-weight:bold; cursor:pointer; z-index:999999; font-size:12px }
-    #mpAvBtn { position:fixed; top:8px; left:calc(50% + 100px); background:#8a2be2;
-      color:#fff; border:none; padding:6px 12px; border-radius:8px; font-family:monospace;
-      font-weight:bold; cursor:pointer; z-index:999999; font-size:12px }
-
-    #mpAdm { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-      width:min(94vw,420px); max-height:86vh; overflow-y:auto; background:#14101a;
-      border:2px solid #ffd84a; border-radius:12px; padding:14px; color:#eee;
-      font-family:monospace; font-size:12px; z-index:2147483001 }
-    #mpAdm h2 { margin:0 0 10px; color:#ffd84a; font-size:14px; text-align:center }
-    #mpAdm h3 { margin:12px 0 6px; color:#b8ff2e; font-size:12px; border-bottom:1px solid #333; padding-bottom:3px }
-    #mpAdm input, #mpAdm select { width:100%; padding:7px; margin:3px 0; background:#0d0a12;
-      color:#fff; border:1px solid #4a2a6a; border-radius:6px; box-sizing:border-box; font-family:inherit; font-size:12px }
-    #mpAdm button { width:100%; padding:8px; margin:3px 0; background:#8a2be2; color:#fff;
-      border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-family:inherit; font-size:12px }
-    #mpAdm .x { position:absolute; top:8px; right:12px; width:auto; padding:3px 10px; background:#402030 }
-    #mpAdm .row { display:grid; grid-template-columns:1fr auto; gap:4px; align-items:center; margin:3px 0 }
-    #mpAdm .st { color:#0f0; font-size:11px; min-height:14px; text-align:center; margin-top:6px }
-
-    #mpLive { position:fixed; bottom:8px; right:8px; width:min(50vw,360px); aspect-ratio:16/9;
-      background:#000; border:2px solid #ff3347; border-radius:10px; z-index:999997;
-      overflow:hidden; box-shadow:0 0 20px rgba(255,51,71,.5); transition:all .2s }
-    #mpLive iframe { width:100%; height:100%; border:0; display:block }
-    #mpLive .tag { position:absolute; top:4px; left:4px; background:#ff3347; color:#fff;
-      font-family:monospace; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:4px; z-index:1 }
-    #mpLive .min { position:absolute; top:4px; right:4px; background:rgba(0,0,0,.7); color:#fff;
-      border:none; font-family:monospace; font-size:11px; padding:2px 8px; border-radius:4px;
-      cursor:pointer; z-index:1; width:auto; font-weight:bold }
-    #mpLive.minimized { aspect-ratio:auto; height:28px; width:110px }
-    #mpLive.minimized iframe { display:none }
-
-    #mpJump { position:fixed; inset:0; background:#000; z-index:2147483647;
-      display:flex; align-items:center; justify-content:center; color:#ff2030;
-      font-family:monospace; font-size:90px; font-weight:bold; pointer-events:none;
-      animation:mpJ .45s ease-out; text-shadow:0 0 50px #ff2030 }
-    @keyframes mpJ { 0%{opacity:0; transform:scale(.5)} 30%{opacity:1; transform:scale(1.2)} 100%{opacity:0; transform:scale(1)} }
+    #mpo{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      background:rgba(4,2,8,.97);z-index:2147483000;font-family:monospace;color:#eee;
+      overflow-y:auto;padding:20px;box-sizing:border-box}
+    #mpo .c{background:#141018;border:2px solid #8a2be2;border-radius:14px;padding:18px;
+      width:min(94vw,420px);box-shadow:0 0 30px rgba(138,43,226,.6);max-height:90vh;
+      overflow-y:auto;box-sizing:border-box}
+    #mpo h1{font-size:17px;margin:0 0 12px;color:#b8ff2e;letter-spacing:2px;text-align:center}
+    #mpo p{font-size:12px;color:#b0a8c0;margin:4px 0;text-align:center}
+    #mpo input,#mpo select{width:100%;padding:10px;margin:5px 0;background:#0d0a12;color:#fff;
+      border:1px solid #4a2a6a;border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box}
+    #mpo button{width:100%;padding:10px;margin:4px 0;background:#8a2be2;color:#fff;
+      border:none;border-radius:8px;font-family:inherit;font-size:12px;cursor:pointer;font-weight:bold}
+    #mpo button:hover{background:#a04ef0}
+    #mpo button.sec{background:#333}#mpo button.sec:hover{background:#444}
+    #mpo button.studio{background:#4ac24a;color:#0a1a0a}#mpo button.studio:hover{background:#5ce05c}
+    #mpo .err{color:#ff5570;font-size:12px;text-align:center;min-height:16px;margin-top:6px}
+    #mpo .room{background:#0d0a12;border:1px solid #4a2a6a;border-radius:8px;padding:8px;margin:5px 0;
+      cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:6px}
+    #mpo .room:hover{background:#1a0f26;border-color:#8a2be2}
+    #mpo .room .info{text-align:left;flex:1;min-width:0}
+    #mpo .room .nm{color:#b8ff2e;font-weight:bold;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #mpo .room .meta{font-size:10px;color:#8a8a9a;margin-top:2px}
+    #mpo .room .cnt{background:#8a2be2;color:#fff;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:bold}
+    #mpo .room .cnt.full{background:#c0203a}
+    #mpo .room .live{color:#ff3347;font-weight:bold}
+    .avPrev{width:100%;height:100px;display:flex;align-items:center;justify-content:center;background:#0d0a12;border-radius:10px;margin-bottom:10px}
+    .avPrev canvas{image-rendering:pixelated;width:72px;height:96px}
+    .avRow{display:flex;align-items:center;gap:8px;margin:6px 0}
+    .avRow>span{font-size:11px;color:#b0a8c0;width:60px;text-align:right;flex-shrink:0}
+    .avRow .sw{flex:1;display:flex;gap:4px;flex-wrap:wrap}
+    .avRow .sw button{width:22px;height:22px;padding:0;margin:0;border-radius:4px;border:2px solid #333;cursor:pointer;background:#000}
+    .avRow .sw button.sel{border-color:#b8ff2e;box-shadow:0 0 6px #b8ff2e}
+    .avRow .sw button[data-c="RAINBOW"]{background:linear-gradient(90deg,#ff0000,#ffcc00,#00ff00,#00d4ff,#8a2be2,#ff0000)}
+    #mpHud{position:fixed;top:8px;left:8px;background:rgba(10,8,15,.86);border:1px solid #4a2a6a;
+      border-radius:8px;padding:6px 10px;font-family:monospace;font-size:11px;color:#fff;
+      z-index:999998;line-height:1.45;max-width:60vw}
+    #mpHud .adm{color:#ffd84a}#mpHud .turn{color:#b8ff2e}#mpHud .me{color:#ff6a9c}
+    #mpChat{position:fixed;left:8px;bottom:88px;width:min(76vw,340px);max-height:180px;overflow-y:auto;
+      background:rgba(10,8,15,.9);border:1px solid #4a2a6a;border-radius:10px;padding:6px;
+      font-family:monospace;font-size:11px;color:#ddd;z-index:999998}
+    #mpChat .m{margin:3px 0;word-wrap:break-word}#mpChat .me{color:#b8ff2e}
+    #mpChat .sys{color:#8a8a9a;font-style:italic}#mpChat .ent{color:#ff6a9c;text-shadow:0 0 5px #ff006a}
+    #mpIn{position:fixed;left:8px;bottom:58px;width:min(76vw,340px);display:flex;gap:4px;z-index:999998}
+    #mpIn input{flex:1;padding:8px;background:rgba(10,8,15,.92);color:#fff;border:1px solid #4a2a6a;
+      border-radius:8px;font-family:monospace;font-size:12px;min-width:0}
+    #mpIn button{padding:8px 12px;background:#8a2be2;color:#fff;border:none;border-radius:8px;
+      font-family:monospace;font-weight:bold;cursor:pointer;width:auto;flex-shrink:0}
+    .mpAv{position:fixed;transform:translate(-50%,-100%);text-align:center;font-family:monospace;
+      font-size:10px;font-weight:bold;color:#fff;text-shadow:0 0 4px #000,0 0 4px #000;z-index:999997;pointer-events:none}
+    .mpAv .body{width:18px;height:22px;margin:0 auto 2px;border-radius:4px;position:relative;
+      border:1px solid #000;box-shadow:0 0 6px rgba(255,255,255,.35)}
+    .mpAv .head{position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;border:1px solid #000}
+    .mpAv .eye{position:absolute;top:3px;width:2px;height:2px;border-radius:50%}
+    .mpAv .eye.l{left:2px}.mpAv .eye.r{right:2px}
+    .mpEnt{position:fixed;transform:translate(-50%,-100%);text-align:center;font-family:monospace;
+      font-size:10px;font-weight:bold;color:#ff6a9c;text-shadow:0 0 6px #ff006a;z-index:999997;cursor:pointer;user-select:none}
+    .mpEnt .blob{width:34px;height:34px;border-radius:50%;
+      background:radial-gradient(circle at 40% 35%, #2a0f3a, #050208 70%);border:2px solid #3a1f4a;
+      margin:0 auto 2px;animation:mpB 2s ease-in-out infinite}
+    .mpEnt.eye .blob{background:radial-gradient(circle at 50% 50%, #ff3347 8%, #1a0508 70%)}
+    .mpEnt.shadow .blob{background:#0a0508;border-color:#000}
+    @keyframes mpB{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+    #mpAdmBtn{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:#ffd84a;
+      color:#1a1a1a;border:none;padding:6px 14px;border-radius:8px;font-family:monospace;
+      font-weight:bold;cursor:pointer;z-index:999999;font-size:12px}
+    #mpAvBtn{position:fixed;top:8px;left:calc(50% + 100px);background:#8a2be2;color:#fff;
+      border:none;padding:6px 12px;border-radius:8px;font-family:monospace;font-weight:bold;
+      cursor:pointer;z-index:999999;font-size:12px}
+    #mpAdm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(94vw,420px);
+      max-height:86vh;overflow-y:auto;background:#14101a;border:2px solid #ffd84a;border-radius:12px;
+      padding:14px;color:#eee;font-family:monospace;font-size:12px;z-index:2147483001}
+    #mpAdm h2{margin:0 0 10px;color:#ffd84a;font-size:14px;text-align:center}
+    #mpAdm h3{margin:12px 0 6px;color:#b8ff2e;font-size:12px;border-bottom:1px solid #333;padding-bottom:3px}
+    #mpAdm input,#mpAdm select{width:100%;padding:7px;margin:3px 0;background:#0d0a12;color:#fff;
+      border:1px solid #4a2a6a;border-radius:6px;box-sizing:border-box;font-family:inherit;font-size:12px}
+    #mpAdm button{width:100%;padding:8px;margin:3px 0;background:#8a2be2;color:#fff;border:none;
+      border-radius:6px;cursor:pointer;font-weight:bold;font-family:inherit;font-size:12px}
+    #mpAdm .x{position:absolute;top:8px;right:12px;width:auto;padding:3px 10px;background:#402030}
+    #mpAdm .row{display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center;margin:3px 0}
+    #mpAdm .st{color:#0f0;font-size:11px;min-height:14px;text-align:center;margin-top:6px}
+    #mpJump{position:fixed;inset:0;background:#000;z-index:2147483647;display:flex;
+      align-items:center;justify-content:center;color:#ff2030;font-family:monospace;
+      font-size:90px;font-weight:bold;pointer-events:none;animation:mpJ .45s ease-out;text-shadow:0 0 50px #ff2030}
+    @keyframes mpJ{0%{opacity:0;transform:scale(.5)}30%{opacity:1;transform:scale(1.2)}100%{opacity:0;transform:scale(1)}}
+    #mpLive{position:fixed;bottom:8px;right:8px;width:min(50vw,360px);aspect-ratio:16/9;background:#000;
+      border:2px solid #ff3347;border-radius:10px;z-index:999997;overflow:hidden;
+      box-shadow:0 0 20px rgba(255,51,71,.5)}
+    #mpLive iframe{width:100%;height:100%;border:0;display:block}
+    #mpLive .tag{position:absolute;top:4px;left:4px;background:#ff3347;color:#fff;font-family:monospace;
+      font-size:10px;font-weight:bold;padding:2px 6px;border-radius:4px;z-index:1}
+    #mpLive .min{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:none;
+      font-family:monospace;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;z-index:1;
+      width:auto;font-weight:bold}
+    #mpLive.minimized{aspect-ratio:auto;height:28px;width:110px}
+    #mpLive.minimized iframe{display:none}
   `;
   document.head.appendChild(s);
 
+  // ===== HWID =====
   async function getHWID() {
     let id = localStorage.getItem('wrick_hwid');
     if (id) return id;
@@ -177,13 +165,23 @@
   }
   const getState = async () => (await fetch('/api/game')).json();
 
+  // ===== AVATAR =====
   function loadAvatar() {
     try {
       const raw = localStorage.getItem('wrick_avatar');
       if (raw) MP.avatar = { ...DEFAULT_AVATAR, ...JSON.parse(raw) };
+      const n = localStorage.getItem('wrick_nick');
+      if (n) MP.nick = n;
     } catch (e) {}
   }
   function saveAvatar() { try { localStorage.setItem('wrick_avatar', JSON.stringify(MP.avatar)); } catch (e) {} }
+  function shadeLocal(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const f = c => Math.round(amt < 0 ? c * (1 + amt) : c + (255 - c) * amt);
+    r = f(r); g = f(g); b = f(b);
+    return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+  }
   function applyAvatar(a) {
     MP.avatar = { ...MP.avatar, ...a };
     saveAvatar();
@@ -223,13 +221,6 @@
     }
     Sprites.cache = {};
   }
-  function shadeLocal(hex, amt) {
-    const n = parseInt(hex.slice(1), 16);
-    let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    const f = c => Math.round(amt < 0 ? c * (1 + amt) : c + (255 - c) * amt);
-    r = f(r); g = f(g); b = f(b);
-    return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
-  }
   function previewCanvas(a) {
     const c = document.createElement('canvas');
     c.width = 24; c.height = 32;
@@ -248,6 +239,7 @@
 
   function closeAll() { document.querySelectorAll('#mpo').forEach(x => x.remove()); }
 
+  // ===== TELA LOGIN =====
   function loginScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -271,6 +263,7 @@
       if (nick.length > NICK_MAX) { err.textContent = '⚠ nick muito longo (máx ' + NICK_MAX + ')'; return; }
       if (!/^[\wÀ-ÿ\-_. ]{2,24}$/.test(nick)) { err.textContent = '⚠ só letras, números, _ - . e espaço'; return; }
       MP.nick = nick;
+      try { localStorage.setItem('wrick_nick', nick); } catch (e) {}
       closeAll();
       lobbyScreen();
     };
@@ -278,6 +271,7 @@
     inp.onkeydown = e => { if (e.key === 'Enter') tentar(); };
   }
 
+  // ===== TELA AVATAR =====
   function avatarScreen(back) {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -320,6 +314,7 @@
     o.querySelector('#avReset').onclick = () => { MP.avatar = { ...DEFAULT_AVATAR }; saveAvatar(); renderSw(); renderPrev(); };
   }
 
+  // ===== TELA SALAS =====
   async function lobbyScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -327,6 +322,7 @@
       <div class="c">
         <h1>SALAS</h1>
         <p>olá, ${MP.nick} · <span id="mpoAvA" style="color:#8a2be2;cursor:pointer;text-decoration:underline">🎨 trocar avatar</span></p>
+        <button id="mpoStudio" class="studio">🛠 ABRIR STUDIO (criar mapas)</button>
         <button id="mpoCreate">➕ CRIAR NOVA SALA</button>
         <button id="mpoRefresh" class="sec">🔄 Atualizar lista</button>
         <div id="mpoList" style="margin-top:8px"><p>carregando...</p></div>
@@ -334,6 +330,7 @@
       </div>`;
     document.body.appendChild(o);
     o.querySelector('#mpoAvA').onclick = () => avatarScreen(() => lobbyScreen());
+    o.querySelector('#mpoStudio').onclick = () => { window.location.href = '/studio.html'; };
     o.querySelector('#mpoCreate').onclick = () => createRoomScreen();
     const listBox = o.querySelector('#mpoList');
     const err = o.querySelector('#mpoErr');
@@ -387,9 +384,9 @@
 
     o.querySelector('#mpoRefresh').onclick = refreshList;
     refreshList();
-    MP._refreshLobby = refreshList;
   }
 
+  // ===== CRIAR SALA =====
   function createRoomScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -415,12 +412,14 @@
       err.textContent = 'criando...';
       const r = await api('createRoom', { roomName, maxPlayers, liveUrl, avatar: MP.avatar });
       if (!r.ok) { err.textContent = '⚠ ' + (r.reason || 'erro'); return; }
-      MP.roomId = r.roomId; MP.room = r.room; MP.isAdmin = true;
+      MP.roomId = r.roomId; MP.room = r.room;
+      MP.isAdmin = (r.room.players[MP.nick] && r.room.players[MP.nick].isAdmin) || false;
       closeAll();
       modeScreen();
     };
   }
 
+  // ===== MODO =====
   function modeScreen() {
     closeAll();
     const o = $('div', { id: 'mpo' });
@@ -441,12 +440,33 @@
     o.querySelector('#mpoExit').onclick = async () => { await api('leaveRoom'); MP.roomId = null; MP.room = null; lobbyScreen(); };
   }
 
+  // ===== START =====
   function start() {
+    if (MP.started) return;
+    MP.started = true;
     applyAvatar(MP.avatar);
-    buildHud(); buildChat();
-    if (MP.isAdmin) buildAdminButton();
+    closeAll(); // garante que nenhum modal tá cobrindo
+    buildHud();
+    buildChat();
+    // botão admin só se for MAIN_ADMIN
+    if (MP.nick === ADMIN_NICK) {
+      MP.isAdmin = true;
+      buildAdminButton();
+    }
     buildAvatarButton();
     pollLoop(); moveLoop(); renderLoop();
+    // verifica se o jogo carregou
+    setTimeout(() => {
+      if (!window.StickDebug) {
+        const d = document.createElement('div');
+        d.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);' +
+          'background:#a02030;color:#fff;padding:20px;border-radius:12px;z-index:9999999;' +
+          'font-family:monospace;text-align:center;max-width:90vw';
+        d.innerHTML = '<b>⚠ JOGO NÃO CARREGOU</b><br><br>O arquivo game.js não respondeu.<br>' +
+          'Verifique se os arquivos estão na pasta <b>public/</b> correta.';
+        document.body.appendChild(d);
+      }
+    }, 3000);
     window.addEventListener('beforeunload', () => {
       try { navigator.sendBeacon('/api/game', JSON.stringify({ action: 'leaveRoom', nick: MP.nick, hwid: MY_HWID, roomId: MP.roomId })); } catch (e) {}
     });
@@ -455,7 +475,7 @@
   function buildHud() { const h = $('div', { id: 'mpHud' }); document.body.appendChild(h); MP.turnEl = h; }
   function updateHud(room) {
     const players = Object.values(room.players || {});
-    const online = players.map(p => p.nick + (p.isAdmin ? ' ⚙' : '')).join(', ');
+    const online = players.map(p => (p.nick || '?') + (p.isAdmin ? ' ⚙' : '')).join(', ');
     const myTurn = room.turnNick === MP.nick;
     MP.turnEl.innerHTML =
       `<span class="me">${MP.nick}${MP.isAdmin ? ' <span class="adm">⚙</span>' : ''}</span> · ${MP.mode === 'multi' ? 'multi' : 'solo'}<br>` +
@@ -463,7 +483,7 @@
       `online: ${online || '—'}<br>` +
       (MP.mode === 'multi'
         ? (myTurn ? '<span class="turn">▶ SUA VEZ de falar</span>' : `<span>⏳ vez de ${room.turnNick || '—'}</span>`)
-        : '<span style="color:#8a8a9a">chat desligado no modo sozinho</span>');
+        : '<span style="color:#8a8a9a">chat entre jogadores desligado no modo sozinho</span>');
   }
 
   function buildChat() {
@@ -476,9 +496,8 @@
       const txt = inp.value.trim(); if (!txt) return;
       inp.value = '';
       const r = await api('chat', { text: txt });
-      if (!r.ok) {
-        if (r.reason === 'naoEhSuaVez') addChat({ type: 'sys', nick: 'SISTEMA', text: 'calma, é a vez de ' + r.turn });
-        else if (r.reason === 'solo') addChat({ type: 'sys', nick: 'SISTEMA', text: 'você está no modo sozinho' });
+      if (!r.ok && r.reason === 'naoEhSuaVez') {
+        addChat({ type: 'sys', nick: 'SISTEMA', text: 'calma, é a vez de ' + r.turn });
       }
     };
     i.querySelector('#mpSend').onclick = enviar;
@@ -503,6 +522,7 @@
   }
 
   function buildAdminButton() {
+    if (document.getElementById('mpAdmBtn')) return;
     const b = $('button', { id: 'mpAdmBtn' }); b.textContent = '⚙ PAINEL ADMIN';
     b.onclick = openAdmin;
     document.body.appendChild(b);
@@ -586,6 +606,7 @@
     MP.adminEntsRefresh = refreshEnts;
   }
 
+  // ===== POLL =====
   async function pollLoop() {
     try {
       const s = await getState();
@@ -604,9 +625,9 @@
         syncAvatars(room);
         syncLive(room);
         if (MP.adminEntsRefresh && document.getElementById('mpAdm')) MP.adminEntsRefresh();
-        if (room.players[MP.nick] && room.players[MP.nick].isAdmin && !MP.isAdmin) {
+        if (room.players[MP.nick] && room.players[MP.nick].isAdmin && MP.nick === ADMIN_NICK && !MP.isAdmin) {
           MP.isAdmin = true;
-          if (!document.getElementById('mpAdmBtn')) buildAdminButton();
+          buildAdminButton();
         }
         if (MP.chatBar) MP.chatBar.classList.toggle('off', MP.mode === 'multi' && room.turnNick !== MP.nick);
       }
@@ -641,9 +662,10 @@
         const hair = a.hair === 'RAINBOW'
           ? 'linear-gradient(90deg,#ff0000,#ffcc00,#00ff00,#00d4ff,#8a2be2,#ff0000)'
           : a.hair;
+        const hairTop = hair.includes('gradient') ? '#ff0000' : hair;
         el.innerHTML = `
           <div class="body" style="background:${a.shirt};border-color:${a.pants}">
-            <div class="head" style="background:linear-gradient(180deg,${hair === 'linear-gradient(90deg,#ff0000,#ffcc00,#00ff00,#00d4ff,#8a2be2,#ff0000)' ? '#ff0000' : hair} 0 50%, ${a.skin} 50% 100%)"></div>
+            <div class="head" style="background:linear-gradient(180deg,${hairTop} 0 50%, ${a.skin} 50% 100%)"></div>
             <div class="eye l" style="background:${a.eyes}"></div>
             <div class="eye r" style="background:${a.eyes}"></div>
           </div>
@@ -691,7 +713,6 @@
     if (MP.liveSig === sig && MP.liveEl) return;
     if (MP.liveEl) MP.liveEl.remove();
     MP.liveSig = sig;
-
     const box = $('div', { id: 'mpLive' });
     let src = '';
     if (live.type === 'twitch') {
