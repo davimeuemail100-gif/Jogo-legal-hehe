@@ -15,7 +15,7 @@ const DEFAULT_AVATAR = {
   pants: '#1a1a1a', shoes: '#ff8a2a', eyes: '#8a2be2',
 };
 
-const EMPTY = () => ({ v: 0, rooms: {}, hwidIndex: {}, builds: {}, toolbox: [] });
+const EMPTY = () => ({ v: 0, rooms: {}, hwidIndex: {}, builds: {}, toolbox: [], leaderboard: {} });
 
 async function getState() {
   let s = await redis.get(KEY);
@@ -25,6 +25,7 @@ async function getState() {
   if (!s.hwidIndex) s.hwidIndex = {};
   if (!s.builds) s.builds = {};
   if (!s.toolbox) s.toolbox = [];
+  if (!s.leaderboard) s.leaderboard = {};
   const now = Date.now();
   let mudou = false;
   for (const rid in s.rooms) {
@@ -82,31 +83,20 @@ async function askAI(entityName, history, userMessage) {
     'analógico. Fala português do Brasil. Responda em frases curtas ' +
     '(no máximo 2 linhas), com tom enigmático e assustador. ' +
     'Nunca saia do personagem. Nunca explique que é uma IA.';
-
   try {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + GROQ_KEY,
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: system },
-          ...history,
-          { role: 'user', content: userMessage },
-        ],
-        temperature: 0.9,
-        max_tokens: 120,
+        messages: [{ role: 'system', content: system }, ...history, { role: 'user', content: userMessage }],
+        temperature: 0.9, max_tokens: 120,
       }),
     });
     if (!r.ok) return '...';
     const j = await r.json();
     return (j.choices?.[0]?.message?.content || '...').trim();
-  } catch {
-    return '...';
-  }
+  } catch { return '...'; }
 }
 
 export default async function handler(req, res) {
@@ -141,22 +131,42 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, rooms: list });
     }
 
-    // ===== BUILD: SALVAR =====
+    // ===== REPORTAR VITÓRIA =====
+    if (action === 'reportWin') {
+      if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
+      if (!s.leaderboard) s.leaderboard = {};
+      if (!s.leaderboard[nick]) s.leaderboard[nick] = { wins: 0, last: 0 };
+      s.leaderboard[nick].wins++;
+      s.leaderboard[nick].last = Date.now();
+      await save(s);
+      return res.status(200).json({ ok: true, wins: s.leaderboard[nick].wins });
+    }
+
+    // ===== VER PLACAR =====
+    if (action === 'getLeaderboard') {
+      const lb = s.leaderboard || {};
+      const list = Object.keys(lb)
+        .map(n => ({ nick: n, wins: lb[n].wins, last: lb[n].last }))
+        .sort((a, b) => b.wins - a.wins)
+        .slice(0, 20);
+      return res.status(200).json({ ok: true, list });
+    }
+
+    // ===== SALVAR BUILD =====
     if (action === 'saveBuild') {
       if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
       s.builds[nick] = rest.build;
       await save(s);
       return res.status(200).json({ ok: true });
     }
-
-    // ===== BUILD: CARREGAR =====
+    // ===== CARREGAR BUILD =====
     if (action === 'loadBuild') {
       if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
       const b = s.builds[nick] || null;
       return res.status(200).json({ ok: true, build: b });
     }
 
-    // ===== TOOLBOX: PUBLICAR =====
+    // ===== PUBLICAR NA TOOLBOX =====
     if (action === 'publishBuild') {
       if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
       const name = String(rest.name || 'Sem nome').slice(0, 40).trim();
@@ -166,27 +176,17 @@ export default async function handler(req, res) {
       if (!rest.build || !rest.build.parts || !rest.build.parts.length)
         return res.status(200).json({ ok: false, reason: 'vazio' });
       const id = 'b' + Math.random().toString(36).slice(2, 8);
-      s.toolbox.unshift({
-        id, author: nick, name, desc, type,
-        parts: rest.build.parts.length,
-        build: rest.build,
-        ts: Date.now(),
-      });
+      s.toolbox.unshift({ id, author: nick, name, desc, type, parts: rest.build.parts.length, build: rest.build, ts: Date.now() });
       if (s.toolbox.length > 200) s.toolbox.length = 200;
       await save(s);
       return res.status(200).json({ ok: true, id });
     }
-
-    // ===== TOOLBOX: LISTAR =====
+    // ===== LISTAR TOOLBOX =====
     if (action === 'listToolbox') {
-      const list = (s.toolbox || []).map(b => ({
-        id: b.id, author: b.author, name: b.name, desc: b.desc,
-        type: b.type, parts: b.parts, ts: b.ts,
-      }));
+      const list = (s.toolbox || []).map(b => ({ id: b.id, author: b.author, name: b.name, desc: b.desc, type: b.type, parts: b.parts, ts: b.ts }));
       return res.status(200).json({ ok: true, list });
     }
-
-    // ===== TOOLBOX: PEGAR UM =====
+    // ===== PEGAR DA TOOLBOX =====
     if (action === 'getToolbox') {
       const b = (s.toolbox || []).find(x => x.id === rest.id);
       if (!b) return res.status(200).json({ ok: false, reason: 'naoAchou' });
@@ -196,29 +196,15 @@ export default async function handler(req, res) {
     // ===== CRIAR SALA =====
     if (action === 'createRoom') {
       if (!hwid) return res.status(200).json({ ok: false, reason: 'semHWID' });
-      if (!nick || !NICK_REGEX.test(nick))
-        return res.status(200).json({ ok: false, reason: 'nickInvalido' });
+      if (!nick || !NICK_REGEX.test(nick)) return res.status(200).json({ ok: false, reason: 'nickInvalido' });
       const roomName = String(rest.roomName || (nick + "'s room")).slice(0, 24);
       const maxPlayers = Math.max(2, Math.min(200, +rest.maxPlayers || 20));
       const live = sanitizeLive(rest.liveUrl);
+      const mode = ['hardcore', 'normal', 'pacific'].includes(rest.gameMode) ? rest.gameMode : 'normal';
       const id = newRoomId(s.rooms);
       const admins = isMain ? [MAIN_ADMIN] : [];
-      s.rooms[id] = {
-        id, name: roomName, host: nick, maxPlayers, live,
-        createdAt: Date.now(),
-        admins,
-        players: {},
-        entities: [],
-        chat: [],
-        turnNick: null,
-      };
-      s.rooms[id].players[nick] = {
-        nick,
-        isAdmin: isMain,
-        mode: 'solo', x: 40, y: 120, face: 1,
-        hwid, lastSeen: Date.now(),
-        avatar: sanitizeAvatar(rest.avatar),
-      };
+      s.rooms[id] = { id, name: roomName, host: nick, maxPlayers, live, gameMode: mode, createdAt: Date.now(), admins, players: {}, entities: [], chat: [], turnNick: null };
+      s.rooms[id].players[nick] = { nick, isAdmin: isMain, mode: 'solo', x: 40, y: 120, face: 1, hwid, lastSeen: Date.now(), avatar: sanitizeAvatar(rest.avatar) };
       s.hwidIndex[hwid] = { roomId: id, nick };
       await save(s);
       return res.status(200).json({ ok: true, roomId: id, nick, room: s.rooms[id] });
@@ -227,34 +213,19 @@ export default async function handler(req, res) {
     // ===== ENTRAR EM SALA =====
     if (action === 'joinRoom') {
       if (!hwid) return res.status(200).json({ ok: false, reason: 'semHWID' });
-      if (!nick || !NICK_REGEX.test(nick))
-        return res.status(200).json({ ok: false, reason: 'nickInvalido' });
+      if (!nick || !NICK_REGEX.test(nick)) return res.status(200).json({ ok: false, reason: 'nickInvalido' });
       const r = s.rooms[roomId];
       if (!r) return res.status(200).json({ ok: false, reason: 'salaNaoExiste' });
       const sameDev = r.players[nick] && r.players[nick].hwid === hwid;
       const count = Object.keys(r.players).length;
-      if (!sameDev && count >= r.maxPlayers)
-        return res.status(200).json({ ok: false, reason: 'salaLotada', players: count, max: r.maxPlayers });
+      if (!sameDev && count >= r.maxPlayers) return res.status(200).json({ ok: false, reason: 'salaLotada', players: count, max: r.maxPlayers });
       const existing = r.players[nick];
-      if (existing && existing.hwid && existing.hwid !== hwid)
-        return res.status(200).json({ ok: false, reason: 'nickEmUso' });
+      if (existing && existing.hwid && existing.hwid !== hwid) return res.status(200).json({ ok: false, reason: 'nickEmUso' });
       if (isMain && !r.admins.includes(MAIN_ADMIN)) r.admins.push(MAIN_ADMIN);
       const isAdmin = r.admins.includes(nick);
-      r.players[nick] = {
-        nick,
-        isAdmin,
-        mode: existing ? existing.mode : 'solo',
-        x: existing ? existing.x : 40,
-        y: existing ? existing.y : 120,
-        face: 1,
-        hwid, lastSeen: Date.now(),
-        avatar: sanitizeAvatar(rest.avatar || (existing && existing.avatar)),
-      };
+      r.players[nick] = { nick, isAdmin, mode: existing ? existing.mode : 'solo', x: existing ? existing.x : 40, y: existing ? existing.y : 120, face: 1, hwid, lastSeen: Date.now(), avatar: sanitizeAvatar(rest.avatar || (existing && existing.avatar)) };
       s.hwidIndex[hwid] = { roomId, nick };
-      if (!r.turnNick) {
-        const mn = Object.keys(r.players).filter(n => r.players[n].mode === 'multi');
-        r.turnNick = mn[0] || null;
-      }
+      if (!r.turnNick) { const mn = Object.keys(r.players).filter(n => r.players[n].mode === 'multi'); r.turnNick = mn[0] || null; }
       await save(s);
       return res.status(200).json({ ok: true, roomId, nick, room: r });
     }
@@ -274,16 +245,11 @@ export default async function handler(req, res) {
     // ===== PRECISA ESTAR NA SALA =====
     const r = s.rooms[roomId];
     if (!r) return res.status(200).json({ ok: false, reason: 'salaNaoExiste' });
-    if (!nick || !r.players[nick] || r.players[nick].hwid !== hwid)
-      return res.status(200).json({ ok: false, reason: 'naoLogado' });
+    if (!nick || !r.players[nick] || r.players[nick].hwid !== hwid) return res.status(200).json({ ok: false, reason: 'naoLogado' });
     const me = r.players[nick];
     me.lastSeen = Date.now();
 
-    if (action === 'setAvatar') {
-      me.avatar = sanitizeAvatar(rest.avatar);
-      await save(s);
-      return res.status(200).json({ ok: true, avatar: me.avatar });
-    }
+    if (action === 'setAvatar') { me.avatar = sanitizeAvatar(rest.avatar); await save(s); return res.status(200).json({ ok: true, avatar: me.avatar }); }
     if (action === 'setMode') {
       me.mode = rest.mode === 'multi' ? 'multi' : 'solo';
       const mn = Object.keys(r.players).filter(n => r.players[n].mode === 'multi');
@@ -291,15 +257,10 @@ export default async function handler(req, res) {
       await save(s);
       return res.status(200).json({ ok: true });
     }
-    if (action === 'move') {
-      me.x = +rest.x || 0; me.y = +rest.y || 0; me.face = +rest.face || 1;
-      await save(s);
-      return res.status(200).json({ ok: true });
-    }
+    if (action === 'move') { me.x = +rest.x || 0; me.y = +rest.y || 0; me.face = +rest.face || 1; await save(s); return res.status(200).json({ ok: true }); }
 
     if (action === 'chat') {
-      if (me.mode === 'multi' && r.turnNick && r.turnNick !== nick)
-        return res.status(200).json({ ok: false, reason: 'naoEhSuaVez', turn: r.turnNick });
+      if (me.mode === 'multi' && r.turnNick && r.turnNick !== nick) return res.status(200).json({ ok: false, reason: 'naoEhSuaVez', turn: r.turnNick });
       const text = String(rest.text || '').slice(0, 240).trim();
       if (!text) return res.status(200).json({ ok: false });
       r.chat.push({ type: 'player', nick, text, t: Date.now() });
@@ -324,10 +285,7 @@ export default async function handler(req, res) {
       const reply = await askAI(e.name, hist, nick + ': ' + text);
       let out = reply, scare = false;
       if (out.startsWith('!!JUMPSCARE!!')) { scare = true; out = out.replace('!!JUMPSCARE!!', '').trim(); }
-      e.hist = hist.concat([
-        { role: 'user', content: nick + ': ' + text },
-        { role: 'assistant', content: out },
-      ]).slice(-20);
+      e.hist = hist.concat([{ role: 'user', content: nick + ': ' + text }, { role: 'assistant', content: out }]).slice(-20);
       r.chat.push({ type: 'entity', id: e.id, nick: e.name, text: out, scare, t: Date.now() });
       if (r.chat.length > 80) r.chat.shift();
       await save(s);
@@ -340,18 +298,11 @@ export default async function handler(req, res) {
     if (action === 'spawnEntity') {
       const kind = ['goo', 'eye', 'shadow'].includes(rest.kind) ? rest.kind : 'goo';
       const name = String(rest.name || 'SOMBRA').slice(0, 18).toUpperCase();
-      r.entities.push({
-        id: 'e' + Math.random().toString(36).slice(2, 8),
-        name, kind, x: +rest.x || 220, y: +rest.y || 120, hist: [],
-      });
+      r.entities.push({ id: 'e' + Math.random().toString(36).slice(2, 8), name, kind, x: +rest.x || 220, y: +rest.y || 120, hist: [] });
       await save(s);
       return res.status(200).json({ ok: true });
     }
-    if (action === 'removeEntity') {
-      r.entities = r.entities.filter(e => e.id !== rest.id);
-      await save(s);
-      return res.status(200).json({ ok: true });
-    }
+    if (action === 'removeEntity') { r.entities = r.entities.filter(e => e.id !== rest.id); await save(s); return res.status(200).json({ ok: true }); }
     if (action === 'giveAdmin') {
       const t = String(rest.nick || '').trim();
       if (!r.players[t]) return res.status(200).json({ ok: false, reason: 'nickNaoEncontrado' });
@@ -363,6 +314,60 @@ export default async function handler(req, res) {
     }
     if (action === 'globalEvent') {
       r.chat.push({ type: 'sys', nick: 'GLOBAL', text: 'Evento: ' + String(rest.event || '').slice(0, 120), t: Date.now() });
+      await save(s);
+      return res.status(200).json({ ok: true });
+    }
+    if (action === 'broadcast') {
+      r.chat.push({ type: 'sys', nick: 'ADMIN', text: String(rest.text || '').slice(0, 200), t: Date.now() });
+      await save(s);
+      return res.status(200).json({ ok: true });
+    }
+    if (action === 'banPlayer') {
+      if (!s.bans) s.bans = {};
+      const t = String(rest.nick || '').trim();
+      const target = r.players[t];
+      if (!target) return res.status(200).json({ ok: false, reason: 'nickNaoEncontrado' });
+      const thwid = target.hwid;
+      s.bans[t] = { hwid: thwid, by: nick, ts: Date.now() };
+      if (thwid) s.bans['hwid:' + thwid] = { nick: t, by: nick, ts: Date.now() };
+      delete r.players[t];
+      r.chat.push({ type: 'sys', nick: 'BAN', text: t + ' foi banido.', t: Date.now() });
+      await save(s);
+      return res.status(200).json({ ok: true });
+    }
+    if (action === 'unbanPlayer') {
+      if (!s.bans) s.bans = {};
+      const t = String(rest.nick || '').trim();
+      const b = s.bans[t];
+      if (b && b.hwid) delete s.bans['hwid:' + b.hwid];
+      delete s.bans[t];
+      r.chat.push({ type: 'sys', nick: 'UNBAN', text: t + ' foi desbanido.', t: Date.now() });
+      await save(s);
+      return res.status(200).json({ ok: true });
+    }
+    if (action === 'freezePlayer') {
+      const t = String(rest.nick || '').trim();
+      if (!r.players[t]) return res.status(200).json({ ok: false, reason: 'nickNaoEncontrado' });
+      r.players[t].frozen = !r.players[t].frozen;
+      r.chat.push({ type: 'sys', nick: 'FREEZE', text: t + (r.players[t].frozen ? ' congelado.' : ' descongelado.'), t: Date.now() });
+      await save(s);
+      return res.status(200).json({ ok: true, frozen: r.players[t].frozen });
+    }
+    if (action === 'giveWeapon') {
+      const t = String(rest.nick || 'TODOS').trim();
+      if (t === 'TODOS') {
+        for (const n in r.players) r.players[n].hasWeapon = true;
+      } else {
+        if (!r.players[t]) return res.status(200).json({ ok: false, reason: 'nickNaoEncontrado' });
+        r.players[t].hasWeapon = true;
+      }
+      r.chat.push({ type: 'sys', nick: 'WEAPON', text: t + ' ganhou uma arma.', t: Date.now() });
+      await save(s);
+      return res.status(200).json({ ok: true });
+    }
+    if (action === 'tacoRain') {
+      r.chat.push({ type: 'sys', nick: 'TACO', text: '🌮 CHUVA DE TACO!!! 🌮', t: Date.now() });
+      r.tacoRain = Date.now();
       await save(s);
       return res.status(200).json({ ok: true });
     }
