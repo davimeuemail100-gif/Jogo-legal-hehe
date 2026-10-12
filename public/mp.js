@@ -22,7 +22,7 @@
     nick: null, isAdmin: false, mode: null,
     roomId: null, room: null, lastV: -1,
     avatars: {}, entities: {}, avatar: { ...DEFAULT_AVATAR },
-    started: false, menuOpen: false, chatMin: false,
+    started: false, menuOpen: false, chatVisible: false,
   };
 
   // ============ CSS ============
@@ -42,7 +42,7 @@
     #mpo button{width:100%;padding:10px;margin:4px 0;background:#8a2be2;color:#fff;
       border:none;border-radius:8px;font-family:inherit;font-size:12px;cursor:pointer;font-weight:bold}
     #mpo button:hover{background:#a04ef0}
-    #mpo button.sec{background:#333}#mpo button.sec:hover{background:#444}
+    #mpo button.sec{background:#333}
     #mpo button.studio{background:#4ac24a;color:#0a1a0a}
     #mpo .err{color:#ff5570;font-size:12px;text-align:center;min-height:16px;margin-top:6px}
     #mpo .room{background:#0d0a12;border:1px solid #4a2a6a;border-radius:8px;padding:8px;margin:5px 0;
@@ -53,7 +53,6 @@
     #mpo .room .meta{font-size:10px;color:#8a8a9a;margin-top:2px}
     #mpo .room .cnt{background:#8a2be2;color:#fff;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:bold}
     #mpo .room .cnt.full{background:#c0203a}
-    #mpo .room .live{color:#ff3347;font-weight:bold}
     .avPrev{width:100%;height:100px;display:flex;align-items:center;justify-content:center;
       background:#0d0a12;border-radius:10px;margin-bottom:10px}
     .avPrev canvas{image-rendering:pixelated;width:72px;height:96px}
@@ -64,63 +63,66 @@
     .avRow .sw button.sel{border-color:#b8ff2e;box-shadow:0 0 6px #b8ff2e}
     .avRow .sw button[data-c="RAINBOW"]{background:linear-gradient(90deg,#ff0000,#ffcc00,#00ff00,#00d4ff,#8a2be2,#ff0000)}
 
-    /* ---------- HUD (topo esquerdo, compacto) ---------- */
+    /* ---------- HUD (topo esquerdo) ---------- */
     #mpHud{position:fixed;top:6px;left:6px;background:rgba(10,8,15,.82);
       border:1px solid #4a2a6a;border-radius:6px;padding:4px 8px;
-      font-family:monospace;font-size:10px;color:#ccc;z-index:999996;line-height:1.3;pointer-events:none}
+      font-family:monospace;font-size:10px;color:#ccc;z-index:999996;line-height:1.3;pointer-events:none;max-width:60vw}
     #mpHud b{color:#b8ff2e}
     #mpHud .adm{color:#ffd84a}
     #mpHud .turn{color:#b8ff2e;font-weight:bold}
 
     /* ---------- botão menu (topo direito) ---------- */
-    #mpMenuBtn{position:fixed;top:6px;right:6px;width:36px;height:36px;
+    #mpMenuBtn{position:fixed;top:6px;right:6px;width:38px;height:38px;
       background:rgba(20,16,26,.92);color:#fff;border:2px solid #508cff;border-radius:8px;
-      font-size:18px;cursor:pointer;z-index:999997;display:flex;align-items:center;justify-content:center}
+      font-size:20px;cursor:pointer;z-index:999997;display:flex;align-items:center;justify-content:center;
+      touch-action:manipulation}
     #mpMenuBtn:active{background:#508cff;color:#000}
 
     /* ---------- menu dropdown ---------- */
-    #mpMenu{position:fixed;top:48px;right:6px;background:rgba(20,16,26,.98);
+    #mpMenu{position:fixed;top:50px;right:6px;background:rgba(20,16,26,.98);
       border:2px solid #508cff;border-radius:10px;padding:6px;z-index:999997;
-      width:180px;box-shadow:0 4px 20px rgba(0,0,0,.6);display:none;flex-direction:column;gap:4px}
+      width:200px;box-shadow:0 4px 20px rgba(0,0,0,.6);display:none;flex-direction:column;gap:4px}
     #mpMenu.open{display:flex}
-    #mpMenu button{width:100%;padding:8px 10px;background:#1e1e2a;color:#fff;border:1px solid #3a3a4a;
-      border-radius:6px;font-family:monospace;font-size:11px;font-weight:bold;cursor:pointer;text-align:left}
+    #mpMenu button{width:100%;padding:9px 12px;background:#1e1e2a;color:#fff;border:1px solid #3a3a4a;
+      border-radius:6px;font-family:monospace;font-size:11px;font-weight:bold;cursor:pointer;
+      text-align:left;touch-action:manipulation}
     #mpMenu button:active{background:#508cff;color:#000}
-    #mpMenu button.danger{background:#402030;border-color:#803040}
+    #mpMenu button.danger{background:#402030;border-color:#803040;color:#ff8a8a}
     #mpMenu button.admin{background:#4a3a10;border-color:#a08020;color:#ffd84a}
 
-    /* ---------- chat (embaixo esquerdo, minimizável) ---------- */
-    #mpChat{position:fixed;left:6px;bottom:80px;width:min(60vw,280px);max-height:150px;
-      overflow-y:auto;background:rgba(10,8,15,.9);border:1px solid #4a2a6a;border-radius:8px;
-      padding:5px 7px;font-family:monospace;font-size:10px;color:#ccc;z-index:999996;
-      transition:max-height .2s, padding .2s}
-    #mpChat.min{max-height:20px;padding:3px 7px;overflow:hidden}
-    #mpChat .m{margin:2px 0;word-wrap:break-word;line-height:1.3}
+    /* ---------- chat flutuante (só aparece quando abre) ---------- */
+    #mpChat{position:fixed;top:50px;right:6px;width:min(90vw,340px);max-height:50vh;
+      overflow-y:auto;background:rgba(10,8,15,.96);border:2px solid #4a2a6a;border-radius:10px;
+      padding:8px 10px;font-family:monospace;font-size:11px;color:#ccc;z-index:999998;
+      display:none;flex-direction:column;gap:4px;box-shadow:0 4px 20px rgba(0,0,0,.6)}
+    #mpChat.open{display:flex}
+    #mpChat .m{margin:1px 0;word-wrap:break-word;line-height:1.35}
     #mpChat .me{color:#b8ff2e}
     #mpChat .sys{color:#8a8a9a;font-style:italic}
     #mpChat .ent{color:#ff6a9c;text-shadow:0 0 4px #ff006a}
+    #mpChatInputWrap{margin-top:6px;display:flex;gap:4px}
+    #mpChatInputWrap input{flex:1;padding:8px;background:#0d0a12;color:#fff;
+      border:1px solid #4a2a6a;border-radius:6px;font-family:monospace;font-size:12px;min-width:0}
+    #mpChatInputWrap button{padding:8px 12px;background:#8a2be2;color:#fff;border:none;border-radius:6px;
+      font-family:monospace;font-weight:bold;cursor:pointer;font-size:12px;touch-action:manipulation}
+    #mpChatInputWrap button.closeChat{background:#402030}
 
-    #mpIn{position:fixed;left:6px;bottom:52px;width:min(60vw,280px);display:flex;gap:3px;z-index:999996}
-    #mpIn input{flex:1;padding:6px 8px;background:rgba(10,8,15,.92);color:#fff;
-      border:1px solid #4a2a6a;border-radius:6px;font-family:monospace;font-size:11px;min-width:0}
-    #mpIn button{padding:6px 10px;background:#8a2be2;color:#fff;border:none;border-radius:6px;
-      font-family:monospace;font-weight:bold;cursor:pointer;width:auto;flex-shrink:0;font-size:11px}
-    #mpIn.hidden{display:none}
-
-    /* ---------- painel admin ---------- */
-    #mpAdm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-      width:min(92vw,400px);max-height:80vh;overflow-y:auto;background:#14101a;
-      border:2px solid #ffd84a;border-radius:12px;padding:14px;color:#eee;
-      font-family:monospace;font-size:12px;z-index:2147483001}
-    #mpAdm h2{margin:0 0 10px;color:#ffd84a;font-size:13px;text-align:center}
-    #mpAdm h3{margin:12px 0 6px;color:#b8ff2e;font-size:11px;border-bottom:1px solid #333;padding-bottom:3px}
-    #mpAdm input,#mpAdm select{width:100%;padding:6px;margin:3px 0;background:#0d0a12;color:#fff;
-      border:1px solid #4a2a6a;border-radius:6px;box-sizing:border-box;font-family:inherit;font-size:11px}
-    #mpAdm button{width:100%;padding:7px;margin:3px 0;background:#8a2be2;color:#fff;border:none;
-      border-radius:6px;cursor:pointer;font-weight:bold;font-family:inherit;font-size:11px}
-    #mpAdm .x{position:absolute;top:8px;right:12px;width:auto;padding:3px 10px;background:#402030}
-    #mpAdm .row{display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center;margin:3px 0}
-    #mpAdm .st{color:#0f0;font-size:10px;min-height:14px;text-align:center;margin-top:6px}
+    /* ---------- diálogo com entidade (embaixo, centralizado) ---------- */
+    #mpEntInput{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);
+      width:min(90vw,420px);background:rgba(10,5,15,.98);border:2px solid #ff6a9c;
+      border-radius:12px;padding:10px;z-index:2147483002;display:none;flex-direction:column;gap:6px;
+      box-shadow:0 0 30px rgba(255,106,156,.4);font-family:monospace}
+    #mpEntInput.open{display:flex}
+    #mpEntInput .who{color:#ff6a9c;font-size:12px;font-weight:bold;text-shadow:0 0 5px #ff006a}
+    #mpEntInput .line{display:flex;gap:6px}
+    #mpEntInput input{flex:1;padding:10px;background:#0d0a12;color:#fff;border:1px solid #4a2a6a;
+      border-radius:8px;font-family:monospace;font-size:13px;min-width:0}
+    #mpEntInput button{padding:10px 14px;background:#ff6a9c;color:#1a0510;border:none;
+      border-radius:8px;font-family:monospace;font-weight:bold;cursor:pointer;touch-action:manipulation}
+    #mpEntInput button.cancel{background:#402030;color:#ff8a8a}
+    #mpEntReply{color:#fff;font-size:12px;line-height:1.4;padding:6px;
+      background:rgba(255,106,156,.1);border-radius:6px;border-left:3px solid #ff6a9c;display:none}
+    #mpEntReply.show{display:block}
 
     /* ---------- avatares e entidades no mundo ---------- */
     .mpAv{position:fixed;transform:translate(-50%,-100%);text-align:center;font-family:monospace;
@@ -135,13 +137,28 @@
 
     .mpEnt{position:fixed;transform:translate(-50%,-100%);text-align:center;font-family:monospace;
       font-size:9px;font-weight:bold;color:#ff6a9c;text-shadow:0 0 5px #ff006a;
-      z-index:999995;cursor:pointer;user-select:none}
-    .mpEnt .blob{width:30px;height:30px;border-radius:50%;
+      z-index:999995;cursor:pointer;user-select:none;touch-action:manipulation}
+    .mpEnt .blob{width:34px;height:34px;border-radius:50%;
       background:radial-gradient(circle at 40% 35%, #2a0f3a, #050208 70%);
       border:2px solid #3a1f4a;margin:0 auto 2px;animation:mpB 2s ease-in-out infinite}
     .mpEnt.eye .blob{background:radial-gradient(circle at 50% 50%, #ff3347 8%, #1a0508 70%)}
     .mpEnt.shadow .blob{background:#0a0508;border-color:#000}
     @keyframes mpB{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+
+    /* ---------- painel admin ---------- */
+    #mpAdm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      width:min(92vw,400px);max-height:80vh;overflow-y:auto;background:#14101a;
+      border:2px solid #ffd84a;border-radius:12px;padding:14px;color:#eee;
+      font-family:monospace;font-size:12px;z-index:2147483001;box-sizing:border-box}
+    #mpAdm h2{margin:0 0 10px;color:#ffd84a;font-size:13px;text-align:center}
+    #mpAdm h3{margin:12px 0 6px;color:#b8ff2e;font-size:11px;border-bottom:1px solid #333;padding-bottom:3px}
+    #mpAdm input,#mpAdm select{width:100%;padding:6px;margin:3px 0;background:#0d0a12;color:#fff;
+      border:1px solid #4a2a6a;border-radius:6px;box-sizing:border-box;font-family:inherit;font-size:11px}
+    #mpAdm button{width:100%;padding:7px;margin:3px 0;background:#8a2be2;color:#fff;border:none;
+      border-radius:6px;cursor:pointer;font-weight:bold;font-family:inherit;font-size:11px}
+    #mpAdm .x{position:absolute;top:8px;right:12px;width:auto;padding:3px 10px;background:#402030}
+    #mpAdm .row{display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center;margin:3px 0}
+    #mpAdm .st{color:#0f0;font-size:10px;min-height:14px;text-align:center;margin-top:6px}
 
     /* ---------- jumpscare ---------- */
     #mpJump{position:fixed;inset:0;background:#000;z-index:2147483647;display:flex;
@@ -333,7 +350,7 @@
       applyAvatar(MP.avatar);
       closeAll();
       if (back) back();
-      else if (MP.roomId) { api('setAvatar', { avatar: MP.avatar }); start(); }
+      else if (MP.roomId) { api('setAvatar', { avatar: MP.avatar }); }
       else lobbyScreen();
     };
     o.querySelector('#avReset').onclick = () => { MP.avatar = { ...DEFAULT_AVATAR }; saveAvatar(); renderSw(); renderPrev(); };
@@ -375,7 +392,7 @@
           el.innerHTML = `
             <div class="info">
               <div class="nm">${room.name}</div>
-              <div class="meta">host: ${room.host} ${room.hasLive ? '· <span class="live">● AO VIVO</span>' : ''}</div>
+              <div class="meta">host: ${room.host}</div>
               <div class="meta">código: <b>${room.id}</b></div>
             </div>
             <div class="cnt ${full ? 'full' : ''}">${room.players}/${room.maxPlayers}</div>`;
@@ -389,16 +406,10 @@
       err.textContent = 'entrando...';
       const r = await api('joinRoom', { roomId, avatar: MP.avatar });
       if (!r.ok) {
-        const msgs = {
-          salaNaoExiste: '⚠ essa sala não existe mais',
-          salaLotada: '⚠ sala lotada (' + r.players + '/' + r.max + ')',
-          nickEmUso: '⚠ esse nick já está em uso nessa sala',
-        };
-        err.textContent = msgs[r.reason] || ('⚠ ' + r.reason);
+        err.textContent = '⚠ ' + (r.reason || 'erro');
         return;
       }
       MP.roomId = r.roomId; MP.room = r.room;
-      MP.isAdmin = (r.room.players[MP.nick] && r.room.players[MP.nick].isAdmin) || false;
       closeAll();
       modeScreen();
     }
@@ -416,8 +427,6 @@
         <input id="crName" placeholder="nome da sala" maxlength="24" value="${MP.nick}'s room">
         <p style="font-size:11px;margin-top:8px">limite de jogadores:</p>
         <input id="crMax" type="number" min="2" max="200" value="20">
-        <p style="font-size:11px;margin-top:8px">live (opcional):</p>
-        <input id="crLive" placeholder="twitch.tv/seucanal">
         <div class="err" id="crErr"></div>
         <button id="crOk">CRIAR</button>
         <button id="crBack" class="sec">← voltar</button>
@@ -428,12 +437,10 @@
     o.querySelector('#crOk').onclick = async () => {
       const roomName = o.querySelector('#crName').value.trim() || (MP.nick + "'s room");
       const maxPlayers = Math.max(2, Math.min(200, +o.querySelector('#crMax').value || 20));
-      const liveUrl = o.querySelector('#crLive').value.trim();
       err.textContent = 'criando...';
-      const r = await api('createRoom', { roomName, maxPlayers, liveUrl, avatar: MP.avatar });
+      const r = await api('createRoom', { roomName, maxPlayers, avatar: MP.avatar });
       if (!r.ok) { err.textContent = '⚠ ' + (r.reason || 'erro'); return; }
       MP.roomId = r.roomId; MP.room = r.room;
-      MP.isAdmin = (r.room.players[MP.nick] && r.room.players[MP.nick].isAdmin) || false;
       closeAll();
       modeScreen();
     };
@@ -466,54 +473,62 @@
     applyAvatar(MP.avatar);
     closeAll();
 
-    // HUD compacto
+    // HUD
     const h = $('div', { id: 'mpHud' });
     document.body.appendChild(h);
     MP.turnEl = h;
 
-    // Botão menu (topo direito)
+    // Botão menu
     const btn = $('button', { id: 'mpMenuBtn' }); btn.textContent = '☰';
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       const m = document.getElementById('mpMenu');
       m.classList.toggle('open');
+      if (!m.classList.contains('open')) {
+        const c = document.getElementById('mpChat');
+        if (c) c.classList.remove('open');
+      }
     };
     document.body.appendChild(btn);
 
-    // Menu dropdown
+    // Menu
     const menu = $('div', { id: 'mpMenu' });
     menu.innerHTML = `
       <button id="mmAv">🎨 Trocar avatar</button>
-      <button id="mmChat">💬 Mostrar chat</button>
+      <button id="mmChat">💬 Abrir chat</button>
       <button id="mmStudio">🛠 Ir pro Studio</button>
       <button id="mmExit" class="danger">← Sair da sala</button>
     `;
     document.body.appendChild(menu);
 
-    // Chat
+    // Chat (só aparece quando abre)
     const chat = $('div', { id: 'mpChat' });
+    chat.innerHTML = `<div id="mpChatMsgs"></div>
+      <div id="mpChatInputWrap">
+        <input id="mpTxt" maxlength="240" placeholder="mensagem..." autocomplete="off">
+        <button id="mpSend">➤</button>
+        <button id="mpChatClose" class="closeChat">×</button>
+      </div>`;
     document.body.appendChild(chat);
-    const inp = $('div', { id: 'mpIn' });
-    inp.innerHTML = `<input id="mpTxt" maxlength="240" placeholder="mensagem..." autocomplete="off"><button id="mpSend">➤</button>`;
-    document.body.appendChild(inp);
-    const txt = inp.querySelector('#mpTxt');
+    MP.chatEl = chat;
+
+    const txt = chat.querySelector('#mpTxt');
     const enviar = async () => {
       const t = txt.value.trim(); if (!t) return;
       txt.value = '';
       const r = await api('chat', { text: t });
       if (!r.ok && r.reason === 'naoEhSuaVez') addChat({ type: 'sys', nick: 'SISTEMA', text: 'é a vez de ' + r.turn });
     };
-    inp.querySelector('#mpSend').onclick = enviar;
+    chat.querySelector('#mpSend').onclick = enviar;
+    chat.querySelector('#mpChatClose').onclick = () => { chat.classList.remove('open'); menu.classList.remove('open'); };
     txt.onkeydown = e => { if (e.key === 'Enter') enviar(); };
-    MP.chatBar = inp;
-    MP.chatEl = chat;
 
     // Ações do menu
     menu.querySelector('#mmAv').onclick = () => { menu.classList.remove('open'); avatarScreen(() => { api('setAvatar', { avatar: MP.avatar }); }); };
     menu.querySelector('#mmChat').onclick = () => {
-      MP.chatMin = !MP.chatMin;
-      chat.classList.toggle('min', MP.chatMin);
-      inp.classList.toggle('hidden', MP.chatMin);
+      chat.classList.toggle('open');
       menu.classList.remove('open');
+      if (chat.classList.contains('open')) setTimeout(() => txt.focus(), 200);
     };
     menu.querySelector('#mmStudio').onclick = () => { window.location.href = '/studio.html'; };
     menu.querySelector('#mmExit').onclick = async () => {
@@ -522,11 +537,58 @@
       location.reload();
     };
 
-    // Painel admin: só MAIN_ADMIN
+    // Botão admin (só se for MAIN_ADMIN)
     if (MP.nick === ADMIN_NICK) {
       MP.isAdmin = true;
-      buildAdminButton();
+      const ab = $('button', { id: 'mmAdmin', class: 'admin' });
+      ab.textContent = '⚙ Painel Admin';
+      ab.onclick = () => { menu.classList.remove('open'); openAdmin(); };
+      menu.insertBefore(ab, menu.firstChild);
     }
+
+    // Caixa de input pra entidade
+    const ei = $('div', { id: 'mpEntInput' });
+    ei.innerHTML = `
+      <div class="who" id="mpEntWho"></div>
+      <div id="mpEntReply"></div>
+      <div class="line">
+        <input id="mpEntTxt" maxlength="200" placeholder="fale com a criatura..." autocomplete="off">
+        <button id="mpEntSend">➤</button>
+        <button id="mpEntCancel" class="cancel">×</button>
+      </div>`;
+    document.body.appendChild(ei);
+    MP.entEl = ei;
+    ei.querySelector('#mpEntCancel').onclick = () => ei.classList.remove('open');
+    const entTxt = ei.querySelector('#mpEntTxt');
+    const entSend = async () => {
+      const t = entTxt.value.trim(); if (!t) return;
+      entTxt.value = '';
+      const id = ei.dataset.entityId;
+      const name = ei.dataset.entityName;
+      const reply = ei.querySelector('#mpEntReply');
+      reply.classList.remove('show');
+      reply.textContent = '...';
+      const r = await api('entityTalk', { id, text: t });
+      if (r.ok) {
+        reply.textContent = name + ': ' + r.text;
+        reply.classList.add('show');
+        if (r.scare) jumpscare();
+      } else {
+        reply.textContent = 'não consegui falar';
+        reply.classList.add('show');
+      }
+    };
+    ei.querySelector('#mpEntSend').onclick = entSend;
+    entTxt.onkeydown = e => { if (e.key === 'Enter') entSend(); };
+
+    // Fecha menu ao clicar fora
+    document.addEventListener('click', (e) => {
+      const m = document.getElementById('mpMenu');
+      const b = document.getElementById('mpMenuBtn');
+      if (m && m.classList.contains('open') && !m.contains(e.target) && !b.contains(e.target)) {
+        m.classList.remove('open');
+      }
+    });
 
     pollLoop(); moveLoop(); renderLoop();
 
@@ -540,30 +602,23 @@
     const meTurn = room.turnNick === MP.nick;
     const nicks = players.map(p => (p.nick || '?') + (p.isAdmin ? '⚙' : '')).join(' ');
     MP.turnEl.innerHTML =
-      `<b>${MP.nick}</b>${MP.isAdmin ? ' <span class="adm">⚙</span>' : ''} · ${players.length}/${room.maxPlayers}<br>` +
-      `[${nicks}]` +
-      (MP.mode === 'multi' && meTurn ? ' <span class="turn">▶</span>' : '');
+      `<b>${MP.nick}</b>${MP.isAdmin ? ' <span class="adm">⚙</span>' : ''} · ${players.length}/${room.maxPlayers}` +
+      (MP.mode === 'multi' && meTurn ? ' <span class="turn">▶</span>' : '') +
+      `<br>[${nicks}]`;
   }
 
   function addChat(e) {
-    const c = document.getElementById('mpChat'); if (!c) return;
+    const c = document.getElementById('mpChatMsgs'); if (!c) return;
     const cls = 'm' + (e.type === 'entity' ? ' ent' : e.type === 'sys' ? ' sys' : e.nick === MP.nick ? ' me' : '');
     const div = $('div', { class: cls });
     div.textContent = `${e.nick}: ${e.text}`;
     c.appendChild(div);
     while (c.children.length > 30) c.removeChild(c.firstChild);
-    c.scrollTop = c.scrollHeight;
+    const chat = document.getElementById('mpChat');
+    if (chat) chat.scrollTop = chat.scrollHeight;
   }
 
   // ============ ADMIN ============
-  function buildAdminButton() {
-    const menu = document.getElementById('mpMenu');
-    if (!menu || document.getElementById('mmAdmin')) return;
-    const b = $('button', { id: 'mmAdmin', class: 'admin' });
-    b.textContent = '⚙ Painel Admin';
-    b.onclick = () => { menu.classList.remove('open'); openAdmin(); };
-    menu.insertBefore(b, menu.firstChild);
-  }
   function openAdmin() {
     if (document.getElementById('mpAdm')) return;
     const o = $('div', { id: 'mpAdm' });
@@ -585,9 +640,6 @@
       <h3>DAR ADMIN</h3>
       <input id="mpAdmGive" placeholder="nick" maxlength="24">
       <button id="mpAdmGiveBtn">DAR</button>
-      <h3>LIVE</h3>
-      <input id="mpAdmLive" placeholder="twitch.tv/canal">
-      <button id="mpAdmLiveBtn">DEFINIR</button>
       <div class="st" id="mpAdmSt"></div>`;
     document.body.appendChild(o);
     const st = o.querySelector('#mpAdmSt');
@@ -606,10 +658,6 @@
       const n = o.querySelector('#mpAdmGive').value.trim(); if (!n) return;
       const r = await api('giveAdmin', { nick: n });
       setSt(r.ok ? '✅ ' + n : '❌ ' + (r.reason || ''));
-    };
-    o.querySelector('#mpAdmLiveBtn').onclick = async () => {
-      const r = await api('setLive', { liveUrl: o.querySelector('#mpAdmLive').value.trim() });
-      setSt(r.ok ? '✅' : '❌');
     };
     const renderEnts = (room) => {
       const box = o.querySelector('#mpAdmEnts'); box.innerHTML = '';
@@ -645,9 +693,6 @@
         syncEntities(room);
         syncAvatars(room);
         if (MP.adminEntsRefresh && document.getElementById('mpAdm')) MP.adminEntsRefresh();
-        if (MP.nick === ADMIN_NICK && !document.getElementById('mmAdmin')) {
-          buildAdminButton();
-        }
       }
     } catch (e) {}
     setTimeout(pollLoop, 1000);
@@ -708,9 +753,18 @@
     for (const id in MP.entities) if (!used[id]) { MP.entities[id].remove(); delete MP.entities[id]; }
   }
   function talkTo(e) {
-    const txt = prompt(`falar com ${e.name}:`);
-    if (!txt) return;
-    api('entityTalk', { id: e.id, text: txt }).then(r => { if (r.scare) jumpscare(); });
+    const ei = document.getElementById('mpEntInput');
+    if (!ei) return;
+    ei.dataset.entityId = e.id;
+    ei.dataset.entityName = e.name;
+    document.getElementById('mpEntWho').textContent = '👁 ' + e.name;
+    const reply = document.getElementById('mpEntReply');
+    reply.classList.remove('show');
+    reply.textContent = '';
+    const inp = document.getElementById('mpEntTxt');
+    inp.value = '';
+    ei.classList.add('open');
+    setTimeout(() => inp.focus(), 250);
   }
   function jumpscare() {
     const j = $('div', { id: 'mpJump' }); j.textContent = '👁';
