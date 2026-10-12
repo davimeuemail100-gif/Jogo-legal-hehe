@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>WRICK STUDIO</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#1a1a24;
+    font-family:-apple-system,"Segoe UI",Roboto,monospace;color:#eee;
+    user-select:none;-webkit-tap-highlight-color:transparent}
+  #c{display:block;width:100vw;height:100vh}
+  .bar{position:fixed;background:rgba(20,16,26,.96);border:2px solid #508cff;
+    border-radius:10px;padding:6px;z-index:100;display:flex;gap:4px;
+    box-shadow:0 4px 18px rgba(0,0,0,.5)}
+  #top{top:8px;left:50%;transform:translateX(-50%);flex-wrap:wrap;justify-content:center;max-width:96vw}
+  #left{top:70px;left:8px;flex-direction:column}
+  #props{bottom:8px;right:8px;width:220px;font-size:11px;flex-direction:column}
+  .bar button{background:#2a2a3a;color:#fff;border:1px solid #3a3a4a;border-radius:6px;
+    padding:7px 10px;font-family:inherit;font-size:11px;cursor:pointer;font-weight:bold;
+    white-space:nowrap;transition:background .12s}
+  .bar button:hover{background:#3a3a4a}
+  .bar button.on{background:#508cff;color:#000}
+  .bar button.act{background:#508cff;color:#000}
+  .bar button.del{background:#a02030}
+  .bar button.del:hover{background:#c02040}
+  .row{display:flex;gap:4px;align-items:center;margin:3px 0;font-size:11px}
+  .row label{width:38px;color:#8a8a9a;text-align:right}
+  .row input{flex:1;background:#0d0a12;color:#fff;border:1px solid #3a3a4a;
+    border-radius:4px;padding:4px 6px;font-family:inherit;font-size:11px;min-width:0}
+  #saved{position:fixed;bottom:8px;left:8px;background:rgba(20,16,26,.95);
+    border:2px solid #4ac24a;border-radius:8px;padding:6px 12px;font-size:11px;
+    color:#4ac24a;z-index:100;display:none;font-weight:bold}
+  .grid-btn{width:34px;height:34px;padding:0;font-size:15px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="bar" id="top">
+  <button data-add="Part">📦 Part</button>
+  <button data-add="Sphere">⚪ Sphere</button>
+  <button data-add="Cylinder">🛢 Cylinder</button>
+  <button data-add="Wedge">🔺 Wedge</button>
+  <span style="width:8px"></span>
+  <button id="btnMove" class="act">✥ Mover</button>
+  <button id="btnRot">⟳ Girar</button>
+  <button id="btnScale">⤢ Escalar</button>
+  <span style="width:8px"></span>
+  <button id="btnSave">💾 Salvar</button>
+  <button id="btnLoad">📂 Carregar</button>
+  <button id="btnClear" class="del">🗑 Limpar</button>
+</div>
+
+<div class="bar" id="left">
+  <button class="grid-btn" id="btnGrid">▦</button>
+</div>
+
+<div class="bar" id="props">
+  <div style="font-weight:bold;color:#508cff;margin-bottom:4px">PROPRIEDADES</div>
+  <div id="noSel" style="color:#666;font-size:11px;text-align:center;padding:8px">— nada selecionado —</div>
+  <div id="propBody" style="display:none">
+    <div class="row"><label>Nome</label><input id="pName" type="text"></div>
+    <div class="row"><label>Cor</label><input id="pColor" type="color" style="padding:0;height:26px"></div>
+    <div class="row"><label>X</label><input id="pX" type="number" step="0.5"></div>
+    <div class="row"><label>Y</label><input id="pY" type="number" step="0.5"></div>
+    <div class="row"><label>Z</label><input id="pZ" type="number" step="0.5"></div>
+    <div class="row"><label>RX</label><input id="pRX" type="number" step="15"></div>
+    <div class="row"><label>RY</label><input id="pRY" type="number" step="15"></div>
+    <div class="row"><label>RZ</label><input id="pRZ" type="number" step="15"></div>
+    <div class="row"><label>SX</label><input id="pSX" type="number" step="0.5" min="0.1"></div>
+    <div class="row"><label>SY</label><input id="pSY" type="number" step="0.5" min="0.1"></div>
+    <div class="row"><label>SZ</label><input id="pSZ" type="number" step="0.5" min="0.1"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px">
+      <button id="btnClone" style="grid-column:1/3">📋 Duplicar</button>
+      <button id="btnDel" class="del" style="grid-column:1/3">🗑 Deletar</button>
+    </div>
+  </div>
+</div>
+
+<div id="saved">✔ salvo</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============ CENA ============
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a24);
+scene.fog = new THREE.Fog(0x1a1a24, 40, 200);
+
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 500);
+camera.position.set(12, 14, 12);
+camera.lookAt(0, 0, 0);
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 1, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI / 2.05;
+controls.minDistance = 3;
+controls.maxDistance = 120;
+
+// ============ LUZES ============
+scene.add(new THREE.HemisphereLight(0xffffff, 0x222230, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.3);
+sun.position.set(20, 30, 15);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -40;
+sun.shadow.camera.right = 40;
+sun.shadow.camera.top = 40;
+sun.shadow.camera.bottom = -40;
+scene.add(sun);
+
+// ============ CHÃO + GRID ============
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshStandardMaterial({ color: 0x2a2a36, roughness: 0.9 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+ground.name = '__ground';
+scene.add(ground);
+
+let grid = new THREE.GridHelper(100, 50, 0x508cff, 0x333340);
+grid.position.y = 0.01;
+scene.add(grid);
+
+// ============ PARTES ============
+const parts = [];          // cada item: { mesh, id, name }
+let nextId = 1;
+
+function addPart(kind, opts) {
+  let geo;
+  switch (kind) {
+    case 'Sphere':   geo = new THREE.SphereGeometry(0.5, 24, 16); break;
+    case 'Cylinder': geo = new THREE.CylinderGeometry(0.5, 0.5, 1, 24); break;
+    case 'Wedge':    geo = new THREE.CylinderGeometry(0.5, 0.5, 1, 4, 1, false, 0, Math.PI); break;
+    default:         geo = new THREE.BoxGeometry(1, 1, 1);
+  }
+  const mat = new THREE.MeshStandardMaterial({
+    color: opts?.color ?? 0xb8ff2e,
+    roughness: 0.6, metalness: 0.05,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.position.set(opts?.x ?? 0, opts?.y ?? 0.5, opts?.z ?? 0);
+  if (opts?.rot) mesh.rotation.set(opts.rot[0], opts.rot[1], opts.rot[2]);
+  if (opts?.scale) mesh.scale.set(opts.scale[0], opts.scale[1], opts.scale[2]);
+  mesh.userData.kind = kind;
+  mesh.userData.name = opts?.name ?? (kind + nextId);
+  mesh.userData.id = 'p' + (nextId++);
+  scene.add(mesh);
+  parts.push({ mesh, id: mesh.userData.id, name: mesh.userData.name });
+  select(mesh);
+  markSaved(false);
+  return mesh;
+}
+
+function removePart(mesh) {
+  const i = parts.findIndex(p => p.mesh === mesh);
+  if (i >= 0) parts.splice(i, 1);
+  scene.remove(mesh);
+  mesh.geometry.dispose();
+  mesh.material.dispose();
+  if (selected === mesh) select(null);
+  markSaved(false);
+}
+
+// ============ SELEÇÃO ============
+let selected = null;
+let outline = null;
+
+function select(mesh) {
+  if (outline) { scene.remove(outline); outline = null; }
+  selected = mesh;
+  if (!mesh) {
+    document.getElementById('noSel').style.display = 'block';
+    document.getElementById('propBody').style.display = 'none';
+    return;
+  }
+  document.getElementById('noSel').style.display = 'none';
+  document.getElementById('propBody').style.display = 'block';
+
+  const box = new THREE.Box3().setFromObject(mesh);
+  const helper = new THREE.Box3Helper(box, 0x508cff);
+  outline = helper;
+  scene.add(helper);
+
+  // preenche campos
+  document.getElementById('pName').value = mesh.userData.name;
+  document.getElementById('pColor').value = '#' + mesh.material.color.getHexString();
+  document.getElementById('pX').value = mesh.position.x.toFixed(1);
+  document.getElementById('pY').value = mesh.position.y.toFixed(1);
+  document.getElementById('pZ').value = mesh.position.z.toFixed(1);
+  document.getElementById('pRX').value = (mesh.rotation.x * 180 / Math.PI).toFixed(0);
+  document.getElementById('pRY').value = (mesh.rotation.y * 180 / Math.PI).toFixed(0);
+  document.getElementById('pRZ').value = (mesh.rotation.z * 180 / Math.PI).toFixed(0);
+  document.getElementById('pSX').value = mesh.scale.x.toFixed(1);
+  document.getElementById('pSY').value = mesh.scale.y.toFixed(1);
+  document.getElementById('pSZ').value = mesh.scale.z.toFixed(1);
+}
+
+function refreshOutline() {
+  if (!selected || !outline) return;
+  const box = new THREE.Box3().setFromObject(selected);
+  outline.box.copy(box);
+}
+
+// ============ RAYCAST (clicar) ============
+const ray = new THREE.Raycaster();
+const ptr = new THREE.Vector2();
+let downX = 0, downY = 0, downT = 0;
+
+canvas.addEventListener('pointerdown', e => {
+  downX = e.clientX; downY = e.clientY; downT = Date.now();
+});
+canvas.addEventListener('pointerup', e => {
+  const dx = Math.abs(e.clientX - downX);
+  const dy = Math.abs(e.clientY - downY);
+  const dt = Date.now() - downT;
+  if (dx > 5 || dy > 5 || dt > 500) return; // foi drag, não clique
+
+  ptr.x = (e.clientX / innerWidth) * 2 - 1;
+  ptr.y = -(e.clientY / innerHeight) * 2 + 1;
+  ray.setFromCamera(ptr, camera);
+  const hits = ray.intersectObjects(parts.map(p => p.mesh), false);
+  if (hits.length) select(hits[0].object);
+  else select(null);
+});
+
+// ============ MODOS (mover/girar/escalar) ============
+let mode = 'move';
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnMove').classList.toggle('act', m === 'move');
+  document.getElementById('btnRot').classList.toggle('act', m === 'rot');
+  document.getElementById('btnScale').classList.toggle('act', m === 'scale');
+}
+document.getElementById('btnMove').onclick = () => setMode('move');
+document.getElementById('btnRot').onclick = () => setMode('rot');
+document.getElementById('btnScale').onclick = () => setMode('scale');
+
+// ============ TECLADO (mover/selecionar/deletar) ============
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.target.tagName === 'INPUT') return;
+
+  if (e.code === 'Delete' || e.code === 'Backspace') {
+    if (selected) { removePart(selected); e.preventDefault(); }
+  }
+  if (e.code === 'KeyD' && e.ctrlKey && selected) {
+    cloneSelected(); e.preventDefault();
+  }
+  if (e.code === 'Digit1') setMode('move');
+  if (e.code === 'Digit2') setMode('rot');
+  if (e.code === 'Digit3') setMode('scale');
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+// ============ MOVER COM TECLADO ============
+let lastKeyMove = 0;
+function keyMoveLoop() {
+  const now = performance.now();
+  const dt = (now - lastKeyMove) / 1000;
+  lastKeyMove = now;
+  if (selected && dt < 0.1) {
+    const speed = 5 * dt;
+    let moved = false;
+    // setas: mover no plano XZ
+    if (keys.ArrowLeft)  { selected.position.x -= speed; moved = true; }
+    if (keys.ArrowRight) { selected.position.x += speed; moved = true; }
+    if (keys.ArrowUp)    { selected.position.z -= speed; moved = true; }
+    if (keys.ArrowDown)  { selected.position.z += speed; moved = true; }
+    // PageUp/PageDown: subir/descer
+    if (keys.PageUp)   { selected.position.y += speed; moved = true; }
+    if (keys.PageDown) { selected.position.y -= speed; moved = true; }
+    if (moved) {
+      updateProps();
+      refreshOutline();
+      markSaved(false);
+    }
+  }
+  requestAnimationFrame(keyMoveLoop);
+}
+requestAnimationFrame(keyMoveLoop);
+
+// ============ PROPRIEDADES (inputs) ============
+function updateProps() {
+  if (!selected) return;
+  document.getElementById('pX').value = selected.position.x.toFixed(1);
+  document.getElementById('pY').value = selected.position.y.toFixed(1);
+  document.getElementById('pZ').value = selected.position.z.toFixed(1);
+  document.getElementById('pRX').value = (selected.rotation.x * 180 / Math.PI).toFixed(0);
+  document.getElementById('pRY').value = (selected.rotation.y * 180 / Math.PI).toFixed(0);
+  document.getElementById('pRZ').value = (selected.rotation.z * 180 / Math.PI).toFixed(0);
+  document.getElementById('pSX').value = selected.scale.x.toFixed(1);
+  document.getElementById('pSY').value = selected.scale.y.toFixed(1);
+  document.getElementById('pSZ').value = selected.scale.z.toFixed(1);
+}
+
+function bindInput(id, fn) {
+  document.getElementById(id).addEventListener('input', e => {
+    if (!selected) return;
+    fn(selected, e.target.value);
+    refreshOutline();
+    markSaved(false);
+  });
+}
+bindInput('pName',  (m, v) => { m.userData.name = v; refreshPartsList(); });
+bindInput('pColor', (m, v) => m.material.color.set(v));
+bindInput('pX',     (m, v) => m.position.x = +v || 0);
+bindInput('pY',     (m, v) => m.position.y = +v || 0);
+bindInput('pZ',     (m, v) => m.position.z = +v || 0);
+bindInput('pRX',    (m, v) => m.rotation.x = (+v || 0) * Math.PI / 180);
+bindInput('pRY',    (m, v) => m.rotation.y = (+v || 0) * Math.PI / 180);
+bindInput('pRZ',    (m, v) => m.rotation.z = (+v || 0) * Math.PI / 180);
+bindInput('pSX',    (m, v) => m.scale.x = Math.max(0.1, +v || 0.1));
+bindInput('pSY',    (m, v) => m.scale.y = Math.max(0.1, +v || 0.1));
+bindInput('pSZ',    (m, v) => m.scale.z = Math.max(0.1, +v || 0.1));
+
+document.getElementById('btnDel').onclick = () => { if (selected) removePart(selected); };
+function cloneSelected() {
+  if (!selected) return;
+  const m = selected;
+  const newMesh = addPart(m.userData.kind, {
+    name: m.userData.name + '_copia',
+    color: m.material.color.getHex(),
+    x: m.position.x + 1.2, y: m.position.y, z: m.position.z,
+    rot: [m.rotation.x, m.rotation.y, m.rotation.z],
+    scale: [m.scale.x, m.scale.y, m.scale.z],
+  });
+  select(newMesh);
+}
+document.getElementById('btnClone').onclick = cloneSelected;
+
+function refreshPartsList() { /* poderia ter uma lista lateral — fica pro futuro */ }
+
+// ============ ADD / GRID ============
+document.querySelectorAll('[data-add]').forEach(b => {
+  b.onclick = () => {
+    const kind = b.dataset.add;
+    // coloca na frente da câmera
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    const tgt = controls.target.clone().add(dir.multiplyScalar(4));
+    addPart(kind, { x: Math.round(tgt.x), y: 0.5, z: Math.round(tgt.z) });
+  };
+});
+
+let gridOn = true;
+document.getElementById('btnGrid').onclick = () => {
+  gridOn = !gridOn;
+  grid.visible = gridOn;
+};
+
+// ============ SALVAR / CARREGAR ============
+const BUILD_KEY = 'wrick_studio_build';
+
+function serialize() {
+  return {
+    parts: parts.map(p => ({
+      kind: p.mesh.userData.kind,
+      name: p.mesh.userData.name,
+      color: '#' + p.mesh.material.color.getHexString(),
+      x: p.mesh.position.x, y: p.mesh.position.y, z: p.mesh.position.z,
+      rx: p.mesh.rotation.x, ry: p.mesh.rotation.y, rz: p.mesh.rotation.z,
+      sx: p.mesh.scale.x, sy: p.mesh.scale.y, sz: p.mesh.scale.z,
+    })),
+    camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z,
+              tx: controls.target.x, ty: controls.target.y, tz: controls.target.z },
+  };
+}
+
+function deserialize(data) {
+  // limpa
+  for (const p of parts) {
+    scene.remove(p.mesh);
+    p.mesh.geometry.dispose();
+    p.mesh.material.dispose();
+  }
+  parts.length = 0;
+  select(null);
+  if (!data || !data.parts) return;
+  for (const p of data.parts) {
+    addPart(p.kind, {
+      name: p.name, color: new THREE.Color(p.color).getHex(),
+      x: p.x, y: p.y, z: p.z,
+      rot: [p.rx, p.ry, p.rz], scale: [p.sx, p.sy, p.sz],
+    });
+  }
+  select(null);
+  if (data.camera) {
+    camera.position.set(data.camera.x, data.camera.y, data.camera.z);
+    controls.target.set(data.camera.tx, data.camera.ty, data.camera.tz);
+  }
+}
+
+document.getElementById('btnSave').onclick = async () => {
+  const data = serialize();
+  try { localStorage.setItem(BUILD_KEY, JSON.stringify(data)); } catch (e) {}
+  try {
+    await fetch('/api/game', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveBuild', build: data }),
+    });
+  } catch (e) {}
+  markSaved(true);
+};
+
+document.getElementById('btnLoad').onclick = async () => {
+  let data = null;
+  try {
+    const r = await fetch('/api/game', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'loadBuild' }),
+    }).then(x => x.json());
+    if (r.ok && r.build) data = r.build;
+  } catch (e) {}
+  if (!data) {
+    try {
+      const raw = localStorage.getItem(BUILD_KEY);
+      if (raw) data = JSON.parse(raw);
+    } catch (e) {}
+  }
+  if (data) deserialize(data);
+};
+
+document.getElementById('btnClear').onclick = () => {
+  if (!confirm('apagar todas as partes?')) return;
+  deserialize(null);
+  markSaved(false);
+};
+
+function markSaved(v) {
+  const el = document.getElementById('saved');
+  if (v) { el.textContent = '✔ salvo'; el.style.borderColor = '#4ac24a'; el.style.color = '#4ac24a'; }
+  else   { el.textContent = '● não salvo'; el.style.borderColor = '#ff8a2a'; el.style.color = '#ff8a2a'; }
+  el.style.display = 'block';
+  clearTimeout(markSaved._t);
+  if (v) markSaved._t = setTimeout(() => el.style.display = 'none', 1500);
+}
+
+// ============ LOOP ============
+function loop() {
+  controls.update();
+  refreshOutline();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+loop();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ============ CARREGA AO ABRIR ============
+(async () => {
+  let data = null;
+  try {
+    const r = await fetch('/api/game', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'loadBuild' }),
+    }).then(x => x.json());
+    if (r.ok && r.build) data = r.build;
+  } catch (e) {}
+  if (!data) {
+    try {
+      const raw = localStorage.getItem(BUILD_KEY);
+      if (raw) data = JSON.parse(raw);
+    } catch (e) {}
+  }
+  if (data) deserialize(data);
+})();
+
+console.log('%c🎨 WRICK STUDIO v0.1','color:#508cff;font-size:18px;font-weight:bold');
+</script>
+</body>
+  </html>
