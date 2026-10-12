@@ -5,7 +5,7 @@ const KEY = 'wrick:state';
 const GROQ_KEY = process.env.GROQ_KEY;
 const MAIN_ADMIN = 'SeversPrevadeFedora';
 const TTL = 20;
-const ROOM_TTL = 300;
+const ROOM_TTL = 3600;
 
 const NICK_MAX = 24;
 const NICK_REGEX = new RegExp('^[\\wÀ-ÿ\\-_. ]{2,' + NICK_MAX + '}$');
@@ -126,6 +126,7 @@ export default async function handler(req, res) {
     const nick = rawNick ? String(rawNick).slice(0, NICK_MAX) : null;
     const hwid = rawHwid ? String(rawHwid).slice(0, 32) : null;
     const roomId = rawRoomId ? String(rawRoomId).toUpperCase().slice(0, 8) : null;
+    const isMain = nick === MAIN_ADMIN;
 
     // ===== LISTAR SALAS =====
     if (action === 'listRooms') {
@@ -139,15 +140,12 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, rooms: list });
     }
 
-    // ===== SALVAR BUILD =====
     if (action === 'saveBuild') {
       if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
       s.builds[nick] = rest.build;
       await save(s);
       return res.status(200).json({ ok: true });
     }
-
-    // ===== CARREGAR BUILD =====
     if (action === 'loadBuild') {
       if (!nick) return res.status(200).json({ ok: false, reason: 'semNick' });
       const b = s.builds[nick] || null;
@@ -163,49 +161,48 @@ export default async function handler(req, res) {
       const maxPlayers = Math.max(2, Math.min(200, +rest.maxPlayers || 20));
       const live = sanitizeLive(rest.liveUrl);
       const id = newRoomId(s.rooms);
+      // admins: só o MAIN_ADMIN
+      const admins = isMain ? [MAIN_ADMIN] : [];
       s.rooms[id] = {
         id, name: roomName, host: nick, maxPlayers, live,
         createdAt: Date.now(),
-        admins: [nick],
+        admins,
         players: {},
         entities: [],
         chat: [],
         turnNick: null,
       };
       s.rooms[id].players[nick] = {
-        isAdmin: true, mode: 'solo', x: 40, y: 120, face: 1,
+        nick,
+        isAdmin: isMain,
+        mode: 'solo', x: 40, y: 120, face: 1,
         hwid, lastSeen: Date.now(),
         avatar: sanitizeAvatar(rest.avatar),
       };
-      if (nick === MAIN_ADMIN && !s.rooms[id].admins.includes(MAIN_ADMIN)) {
-        s.rooms[id].admins.push(MAIN_ADMIN);
-      }
       s.hwidIndex[hwid] = { roomId: id, nick };
       await save(s);
       return res.status(200).json({ ok: true, roomId: id, nick, room: s.rooms[id] });
     }
 
-    // ===== ENTRAR EM SALA =====
+    // ===== ENTRAR =====
     if (action === 'joinRoom') {
       if (!hwid) return res.status(200).json({ ok: false, reason: 'semHWID' });
       if (!nick || !NICK_REGEX.test(nick))
         return res.status(200).json({ ok: false, reason: 'nickInvalido' });
       const r = s.rooms[roomId];
       if (!r) return res.status(200).json({ ok: false, reason: 'salaNaoExiste' });
-
       const sameDev = r.players[nick] && r.players[nick].hwid === hwid;
-      const playerCount = Object.keys(r.players).length;
-
-      if (!sameDev && playerCount >= r.maxPlayers) {
-        return res.status(200).json({ ok: false, reason: 'salaLotada', players: playerCount, max: r.maxPlayers });
-      }
+      const count = Object.keys(r.players).length;
+      if (!sameDev && count >= r.maxPlayers)
+        return res.status(200).json({ ok: false, reason: 'salaLotada', players: count, max: r.maxPlayers });
       const existing = r.players[nick];
-      if (existing && existing.hwid && existing.hwid !== hwid) {
+      if (existing && existing.hwid && existing.hwid !== hwid)
         return res.status(200).json({ ok: false, reason: 'nickEmUso' });
-      }
-
+      // se for MAIN_ADMIN, garante que tá na lista de admins
+      if (isMain && !r.admins.includes(MAIN_ADMIN)) r.admins.push(MAIN_ADMIN);
       const isAdmin = r.admins.includes(nick);
       r.players[nick] = {
+        nick,
         isAdmin,
         mode: existing ? existing.mode : 'solo',
         x: existing ? existing.x : 40,
@@ -223,7 +220,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, roomId, nick, room: r });
     }
 
-    // ===== SAIR DA SALA =====
     if (action === 'leaveRoom') {
       const r = s.rooms[roomId];
       if (r && nick && r.players[nick] && r.players[nick].hwid === hwid) {
@@ -240,7 +236,6 @@ export default async function handler(req, res) {
     if (!r) return res.status(200).json({ ok: false, reason: 'salaNaoExiste' });
     if (!nick || !r.players[nick] || r.players[nick].hwid !== hwid)
       return res.status(200).json({ ok: false, reason: 'naoLogado' });
-
     const me = r.players[nick];
     me.lastSeen = Date.now();
 
@@ -262,71 +257,64 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
+    // ---- CHAT (funciona em solo também) ----
     if (action === 'chat') {
-      if (me.mode !== 'multi') return res.status(200).json({ ok: false, reason: 'solo' });
-      if (r.turnNick && r.turnNick !== nick)
+      if (me.mode === 'multi' && r.turnNick && r.turnNick !== nick)
         return res.status(200).json({ ok: false, reason: 'naoEhSuaVez', turn: r.turnNick });
       const text = String(rest.text || '').slice(0, 240).trim();
       if (!text) return res.status(200).json({ ok: false });
       r.chat.push({ type: 'player', nick, text, t: Date.now() });
       if (r.chat.length > 80) r.chat.shift();
-      const mn = Object.keys(r.players).filter(n => r.players[n].mode === 'multi');
-      const i = mn.indexOf(nick);
-      r.turnNick = mn.length <= 1 ? nick : mn[(i + 1) % mn.length];
+      if (me.mode === 'multi') {
+        const mn = Object.keys(r.players).filter(n => r.players[n].mode === 'multi');
+        const i = mn.indexOf(nick);
+        r.turnNick = mn.length <= 1 ? nick : mn[(i + 1) % mn.length];
+      }
       await save(s);
       return res.status(200).json({ ok: true, turn: r.turnNick });
     }
 
+    // ---- ENTIDADE (IA) ----
     if (action === 'entityTalk') {
       const e = r.entities.find(x => x.id === rest.id);
       if (!e) return res.status(200).json({ ok: false, reason: 'entidadeNaoExiste' });
       const text = String(rest.text || '').slice(0, 200).trim();
       if (!text) return res.status(200).json({ ok: false });
-
       r.chat.push({ type: 'player', nick, text, t: Date.now(), toEntity: e.id, toName: e.name });
       if (r.chat.length > 80) r.chat.shift();
-
       const hist = e.hist || [];
       const reply = await askAI(e.name, hist, nick + ': ' + text);
-      let out = reply;
-      let scare = false;
-      if (out.startsWith('!!JUMPSCARE!!')) {
-        scare = true;
-        out = out.replace('!!JUMPSCARE!!', '').trim();
-      }
+      let out = reply, scare = false;
+      if (out.startsWith('!!JUMPSCARE!!')) { scare = true; out = out.replace('!!JUMPSCARE!!', '').trim(); }
       e.hist = hist.concat([
         { role: 'user', content: nick + ': ' + text },
         { role: 'assistant', content: out },
       ]).slice(-20);
-
       r.chat.push({ type: 'entity', id: e.id, nick: e.name, text: out, scare, t: Date.now() });
       if (r.chat.length > 80) r.chat.shift();
       await save(s);
       return res.status(200).json({ ok: true, text: out, scare });
     }
 
+    // ===== DAQUI PRA BAIXO SÓ ADMIN =====
+    if (!me.isAdmin) return res.status(200).json({ ok: false, reason: 'notAdmin' });
+
     if (action === 'spawnEntity') {
-      if (!me.isAdmin) return res.status(200).json({ ok: false, reason: 'notAdmin' });
       const kind = ['goo', 'eye', 'shadow'].includes(rest.kind) ? rest.kind : 'goo';
       const name = String(rest.name || 'SOMBRA').slice(0, 18).toUpperCase();
       r.entities.push({
         id: 'e' + Math.random().toString(36).slice(2, 8),
-        name, kind, x: +rest.x || 220, y: +rest.y || 120,
-        hist: [],
+        name, kind, x: +rest.x || 220, y: +rest.y || 120, hist: [],
       });
       await save(s);
       return res.status(200).json({ ok: true });
     }
-
     if (action === 'removeEntity') {
-      if (!me.isAdmin) return res.status(200).json({ ok: false });
       r.entities = r.entities.filter(e => e.id !== rest.id);
       await save(s);
       return res.status(200).json({ ok: true });
     }
-
     if (action === 'giveAdmin') {
-      if (!me.isAdmin) return res.status(200).json({ ok: false });
       const t = String(rest.nick || '').trim();
       if (!r.players[t]) return res.status(200).json({ ok: false, reason: 'nickNaoEncontrado' });
       if (!r.admins.includes(t)) r.admins.push(t);
@@ -335,16 +323,12 @@ export default async function handler(req, res) {
       await save(s);
       return res.status(200).json({ ok: true });
     }
-
     if (action === 'globalEvent') {
-      if (!me.isAdmin) return res.status(200).json({ ok: false });
       r.chat.push({ type: 'sys', nick: 'GLOBAL', text: 'Evento: ' + String(rest.event || '').slice(0, 120), t: Date.now() });
       await save(s);
       return res.status(200).json({ ok: true });
     }
-
     if (action === 'setLive') {
-      if (!me.isAdmin) return res.status(200).json({ ok: false });
       r.live = sanitizeLive(rest.liveUrl);
       await save(s);
       return res.status(200).json({ ok: true, live: r.live });
